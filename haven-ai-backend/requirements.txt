@@ -1,0 +1,22 @@
+fastapi
+uvicorn
+pydantic
+pydantic-settings
+python-dotenv
+python-multipart
+google-genai
+google-generativeai
+firebase-admin
+httpx
+# 3D Design: floor-plan image analysis (Layer 1 computer vision)
+opencv-python-headless
+numpy
+# Interior Design: room segmentation model (SegFormer-B2, ONNX) on the CPU
+onnxruntime
+
+
+# Add ML libraries later:
+# torch
+# transformers
+# numpy
+# pandas

@@ -1,0 +1,10 @@
+{
+ "id": "painted_plaster_wall",
+ "name": "Painted Plaster Wall",
+ "license": "CC0",
+ "source": "https://polyhaven.com/a/painted_plaster_wall",
+ "dimensions_mm": [
+  2000,
+  2000
+ ]
+}

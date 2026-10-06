@@ -1,0 +1,37 @@
+# --- Secrets: never commit ---
+.env
+.env.*
+!.env.example
+firebase-credentials.json
+*-firebase-adminsdk-*.json
+serviceAccount*.json
+
+# --- Python ---
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.prof
+
+# --- Backend runtime data ---
+haven-ai-backend/storage/
+
+# --- Large binary assets (re-download with scripts/fetch_interior_assets.py) ---
+haven-ai-backend/assets/interior/models/
+haven-ai-backend/assets/interior/textures/*/*k/
+haven-ai-backend/ml_models/**/*.onnx
+
+# --- Frontend ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+coverage/
+
+# --- Editors / OS ---
+.vs/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

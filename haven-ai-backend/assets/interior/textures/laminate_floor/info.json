@@ -1,0 +1,10 @@
+{
+ "id": "laminate_floor",
+ "name": "Laminate Floor",
+ "license": "CC0",
+ "source": "https://polyhaven.com/a/laminate_floor",
+ "dimensions_mm": [
+  2000,
+  2000
+ ]
+}

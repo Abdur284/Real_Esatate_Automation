@@ -1,0 +1,10 @@
+{
+ "id": "wood_plank_wall",
+ "name": "Wood Plank Wall",
+ "license": "CC0",
+ "source": "https://polyhaven.com/a/wood_plank_wall",
+ "dimensions_mm": [
+  1000,
+  1000
+ ]
+}

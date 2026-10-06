@@ -1,0 +1,10 @@
+{
+ "id": "large_grey_tiles",
+ "name": "Large Grey Tiles",
+ "license": "CC0",
+ "source": "https://polyhaven.com/a/large_grey_tiles",
+ "dimensions_mm": [
+  3000,
+  3000
+ ]
+}

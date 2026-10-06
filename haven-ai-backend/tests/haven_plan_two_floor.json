@@ -1,0 +1,56 @@
+{
+  "status": "FEASIBLE_WITH_TWO_FLOORS",
+  "plot": {"width_ft": 25, "length_ft": 50, "area_sqft": 1250},
+  "requirements": {},
+  "design": {
+    "floors": 2,
+    "ground_floor": {
+      "rooms": [
+        {"name": "Drawing Room", "type": "drawing_room", "x": 12, "y": 0, "width": 13, "length": 14,
+         "doors": [{"wall": "south", "offset_ft": 4, "width_ft": 3.5, "to": "Outside"}, {"wall": "north", "offset_ft": 1, "width_ft": 3, "to": "Staircase"}],
+         "windows": [{"wall": "east", "offset_ft": 5, "width_ft": 4}]},
+        {"name": "Staircase", "type": "staircase", "x": 12, "y": 14, "width": 6, "length": 12,
+         "doors": [{"wall": "east", "offset_ft": 4, "width_ft": 3, "to": "Kitchen"}, {"wall": "west", "offset_ft": 6, "width_ft": 3, "to": "TV Lounge"}], "windows": []},
+        {"name": "Kitchen", "type": "kitchen", "x": 18, "y": 14, "width": 7, "length": 12,
+         "doors": [], "windows": [{"wall": "east", "offset_ft": 4, "width_ft": 4}]},
+        {"name": "TV Lounge", "type": "tv_lounge", "x": 0, "y": 18, "width": 12, "length": 16,
+         "doors": [{"wall": "south", "offset_ft": 4, "width_ft": 3.5, "to": "Car Porch"}, {"wall": "north", "offset_ft": 9, "width_ft": 3, "to": "Bedroom"}],
+         "windows": [{"wall": "west", "offset_ft": 6, "width_ft": 4}]},
+        {"name": "Dining", "type": "dining_room", "x": 12, "y": 26, "width": 13, "length": 8,
+         "doors": [{"wall": "south", "offset_ft": 1, "width_ft": 3, "to": "Staircase"}], "windows": [{"wall": "east", "offset_ft": 2, "width_ft": 4}]},
+        {"name": "Bathroom", "type": "bathroom", "x": 0, "y": 34, "width": 8, "length": 8,
+         "doors": [{"wall": "east", "offset_ft": 2, "width_ft": 2.5, "to": "Bedroom"}], "windows": [{"wall": "west", "offset_ft": 3, "width_ft": 2}]},
+        {"name": "Store", "type": "store", "x": 0, "y": 42, "width": 8, "length": 8,
+         "doors": [{"wall": "east", "offset_ft": 2, "width_ft": 2.5, "to": "Bedroom"}], "windows": []},
+        {"name": "Bedroom", "type": "bedroom", "x": 8, "y": 34, "width": 17, "length": 16,
+         "doors": [], "windows": [{"wall": "north", "offset_ft": 6, "width_ft": 5}, {"wall": "east", "offset_ft": 6, "width_ft": 4}]}
+      ],
+      "circulation": [],
+      "open_spaces": [
+        {"name": "Car Porch", "type": "parking", "x": 0, "y": 0, "width": 12, "length": 18}
+      ]
+    },
+    "first_floor": {
+      "rooms": [
+        {"name": "Staircase", "type": "staircase", "x": 12, "y": 14, "width": 6, "length": 12,
+         "doors": [{"wall": "west", "offset_ft": 6, "width_ft": 3, "to": "Bedroom 1"}, {"wall": "north", "offset_ft": 2, "width_ft": 3, "to": "Bedroom 3"}], "windows": []},
+        {"name": "Bedroom 1", "type": "master_bedroom", "x": 0, "y": 14, "width": 12, "length": 18,
+         "doors": [{"wall": "south", "offset_ft": 4, "width_ft": 3, "to": "Terrace"}], "windows": [{"wall": "west", "offset_ft": 7, "width_ft": 4}]},
+        {"name": "Bath 1", "type": "bathroom", "x": 18, "y": 14, "width": 7, "length": 8,
+         "doors": [{"wall": "west", "offset_ft": 2, "width_ft": 2.5, "to": "Staircase"}], "windows": [{"wall": "east", "offset_ft": 3, "width_ft": 2}]},
+        {"name": "Store", "type": "store", "x": 18, "y": 22, "width": 7, "length": 4,
+         "doors": [], "windows": []},
+        {"name": "Bedroom 2", "type": "bedroom", "x": 0, "y": 32, "width": 12, "length": 18,
+         "doors": [{"wall": "east", "offset_ft": 4, "width_ft": 3, "to": "Bedroom 3"}], "windows": [{"wall": "west", "offset_ft": 7, "width_ft": 4}]},
+        {"name": "Bedroom 3", "type": "bedroom", "x": 12, "y": 26, "width": 13, "length": 16,
+         "doors": [], "windows": [{"wall": "east", "offset_ft": 6, "width_ft": 4}]},
+        {"name": "Bath 2", "type": "bathroom", "x": 12, "y": 42, "width": 13, "length": 8,
+         "doors": [{"wall": "south", "offset_ft": 5, "width_ft": 2.5, "to": "Bedroom 3"}], "windows": [{"wall": "north", "offset_ft": 5, "width_ft": 3}]}
+      ],
+      "circulation": [],
+      "open_spaces": [
+        {"name": "Terrace", "type": "terrace", "x": 0, "y": 0, "width": 25, "length": 14}
+      ]
+    }
+  }
+}

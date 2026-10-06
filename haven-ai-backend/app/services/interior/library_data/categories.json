@@ -1,0 +1,961 @@
+{
+ "schema_version": 1,
+ "groups": [
+  {
+   "id": "seating",
+   "label": "Seating"
+  },
+  {
+   "id": "tables",
+   "label": "Tables"
+  },
+  {
+   "id": "bedroom",
+   "label": "Bedroom"
+  },
+  {
+   "id": "living",
+   "label": "Living room & storage"
+  },
+  {
+   "id": "lighting",
+   "label": "Lighting"
+  },
+  {
+   "id": "decoration",
+   "label": "Decoration"
+  },
+  {
+   "id": "curtains",
+   "label": "Curtains & blinds"
+  },
+  {
+   "id": "rugs",
+   "label": "Rugs"
+  }
+ ],
+ "categories": [
+  {
+   "id": "sofa",
+   "label": "Sofas",
+   "group": "seating",
+   "placement": "floor",
+   "generator": "sofa",
+   "size_breaks_cm": [
+    180,
+    250
+   ],
+   "materials": [
+    "fabric",
+    "velvet",
+    "leather",
+    "linen"
+   ],
+   "synonyms": [
+    "sofa",
+    "sofas",
+    "couch",
+    "settee",
+    "loveseat",
+    "sectional"
+   ]
+  },
+  {
+   "id": "armchair",
+   "label": "Armchairs",
+   "group": "seating",
+   "placement": "floor",
+   "generator": "armchair",
+   "size_breaks_cm": [
+    75,
+    90
+   ],
+   "materials": [
+    "fabric",
+    "velvet",
+    "leather",
+    "linen",
+    "rattan"
+   ],
+   "synonyms": [
+    "armchair",
+    "accent chair",
+    "lounge chair",
+    "wingback",
+    "club chair"
+   ]
+  },
+  {
+   "id": "recliner",
+   "label": "Recliners",
+   "group": "seating",
+   "placement": "floor",
+   "generator": "armchair",
+   "size_breaks_cm": [
+    85,
+    100
+   ],
+   "materials": [
+    "fabric",
+    "velvet",
+    "leather",
+    "linen"
+   ],
+   "synonyms": [
+    "recliner",
+    "reclining",
+    "lazy boy"
+   ]
+  },
+  {
+   "id": "dining_chair",
+   "label": "Dining chairs",
+   "group": "seating",
+   "placement": "floor",
+   "generator": "chair",
+   "size_breaks_cm": [
+    45,
+    55
+   ],
+   "materials": [
+    "fabric",
+    "velvet",
+    "leather",
+    "linen",
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted",
+    "metal_black",
+    "metal_brass",
+    "metal_steel",
+    "rattan"
+   ],
+   "synonyms": [
+    "dining chair",
+    "chair",
+    "chairs",
+    "side chair",
+    "kitchen chair"
+   ]
+  },
+  {
+   "id": "office_chair",
+   "label": "Office chairs",
+   "group": "seating",
+   "placement": "floor",
+   "generator": "chair",
+   "size_breaks_cm": [
+    60,
+    70
+   ],
+   "materials": [
+    "fabric",
+    "velvet",
+    "leather",
+    "linen",
+    "metal_black"
+   ],
+   "synonyms": [
+    "office chair",
+    "desk chair",
+    "task chair",
+    "gaming chair"
+   ]
+  },
+  {
+   "id": "stool",
+   "label": "Stools",
+   "group": "seating",
+   "placement": "floor",
+   "generator": "chair",
+   "size_breaks_cm": [
+    35,
+    45
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted",
+    "metal_black",
+    "metal_brass",
+    "metal_steel",
+    "fabric",
+    "velvet",
+    "leather",
+    "linen",
+    "rattan"
+   ],
+   "synonyms": [
+    "stool",
+    "bar stool",
+    "counter stool"
+   ]
+  },
+  {
+   "id": "bench",
+   "label": "Benches",
+   "group": "seating",
+   "placement": "floor",
+   "generator": "bench",
+   "size_breaks_cm": [
+    110,
+    150
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted",
+    "fabric",
+    "velvet",
+    "leather",
+    "linen"
+   ],
+   "synonyms": [
+    "bench"
+   ]
+  },
+  {
+   "id": "ottoman",
+   "label": "Ottomans & poufs",
+   "group": "seating",
+   "placement": "floor",
+   "generator": "ottoman",
+   "size_breaks_cm": [
+    55,
+    80
+   ],
+   "materials": [
+    "fabric",
+    "velvet",
+    "leather",
+    "linen"
+   ],
+   "synonyms": [
+    "ottoman",
+    "pouf",
+    "pouffe",
+    "footstool"
+   ]
+  },
+  {
+   "id": "coffee_table",
+   "label": "Coffee tables",
+   "group": "tables",
+   "placement": "floor",
+   "generator": "table",
+   "size_breaks_cm": [
+    90,
+    120
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted",
+    "marble_white",
+    "marble_black",
+    "glass",
+    "metal_black",
+    "metal_brass",
+    "metal_steel"
+   ],
+   "synonyms": [
+    "coffee table",
+    "centre table",
+    "center table",
+    "cocktail table"
+   ]
+  },
+  {
+   "id": "side_table",
+   "label": "Side tables",
+   "group": "tables",
+   "placement": "floor",
+   "generator": "table",
+   "size_breaks_cm": [
+    45,
+    55
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted",
+    "marble_white",
+    "marble_black",
+    "glass",
+    "metal_black",
+    "metal_brass",
+    "metal_steel"
+   ],
+   "synonyms": [
+    "side table",
+    "end table",
+    "accent table"
+   ]
+  },
+  {
+   "id": "dining_table",
+   "label": "Dining tables",
+   "group": "tables",
+   "placement": "floor",
+   "generator": "table",
+   "size_breaks_cm": [
+    140,
+    190
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted",
+    "marble_white",
+    "marble_black",
+    "glass"
+   ],
+   "synonyms": [
+    "dining table",
+    "table",
+    "kitchen table"
+   ]
+  },
+  {
+   "id": "console_table",
+   "label": "Console tables",
+   "group": "tables",
+   "placement": "floor",
+   "generator": "table",
+   "size_breaks_cm": [
+    100,
+    140
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted",
+    "marble_white",
+    "glass",
+    "metal_black",
+    "metal_brass",
+    "metal_steel"
+   ],
+   "synonyms": [
+    "console",
+    "console table",
+    "hall table",
+    "entryway table"
+   ]
+  },
+  {
+   "id": "desk",
+   "label": "Study & office desks",
+   "group": "tables",
+   "placement": "floor",
+   "generator": "table",
+   "size_breaks_cm": [
+    110,
+    150
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted",
+    "metal_black",
+    "metal_brass",
+    "metal_steel"
+   ],
+   "synonyms": [
+    "desk",
+    "study table",
+    "office desk",
+    "writing desk",
+    "computer desk",
+    "work desk"
+   ]
+  },
+  {
+   "id": "bedside_table",
+   "label": "Bedside tables",
+   "group": "tables",
+   "placement": "floor",
+   "generator": "storage",
+   "size_breaks_cm": [
+    45,
+    55
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted"
+   ],
+   "synonyms": [
+    "bedside table",
+    "nightstand",
+    "night stand",
+    "bedside"
+   ]
+  },
+  {
+   "id": "bed",
+   "label": "Beds",
+   "group": "bedroom",
+   "placement": "floor",
+   "generator": "bed",
+   "size_breaks_cm": [
+    120,
+    170
+   ],
+   "materials": [
+    "fabric",
+    "velvet",
+    "leather",
+    "linen",
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted"
+   ],
+   "synonyms": [
+    "bed",
+    "beds",
+    "king bed",
+    "queen bed",
+    "double bed",
+    "single bed"
+   ]
+  },
+  {
+   "id": "wardrobe",
+   "label": "Wardrobes",
+   "group": "bedroom",
+   "placement": "floor",
+   "generator": "storage",
+   "size_breaks_cm": [
+    100,
+    180
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted"
+   ],
+   "synonyms": [
+    "wardrobe",
+    "closet",
+    "almirah",
+    "armoire"
+   ]
+  },
+  {
+   "id": "dresser",
+   "label": "Dressers & chests",
+   "group": "bedroom",
+   "placement": "floor",
+   "generator": "storage",
+   "size_breaks_cm": [
+    80,
+    130
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted"
+   ],
+   "synonyms": [
+    "dresser",
+    "chest of drawers",
+    "chest",
+    "drawers"
+   ]
+  },
+  {
+   "id": "dressing_table",
+   "label": "Dressing tables",
+   "group": "bedroom",
+   "placement": "floor",
+   "generator": "table",
+   "size_breaks_cm": [
+    90,
+    120
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted"
+   ],
+   "synonyms": [
+    "dressing table",
+    "vanity",
+    "makeup table"
+   ]
+  },
+  {
+   "id": "tv_unit",
+   "label": "TV units",
+   "group": "living",
+   "placement": "floor",
+   "generator": "storage",
+   "size_breaks_cm": [
+    140,
+    190
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted",
+    "marble_white"
+   ],
+   "synonyms": [
+    "tv unit",
+    "tv stand",
+    "media console",
+    "tv cabinet",
+    "entertainment unit"
+   ]
+  },
+  {
+   "id": "bookshelf",
+   "label": "Bookshelves",
+   "group": "living",
+   "placement": "floor",
+   "generator": "bookshelf",
+   "size_breaks_cm": [
+    70,
+    110
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted",
+    "metal_black",
+    "metal_brass",
+    "metal_steel"
+   ],
+   "synonyms": [
+    "bookshelf",
+    "bookcase",
+    "shelf",
+    "shelving",
+    "shelves"
+   ]
+  },
+  {
+   "id": "cabinet",
+   "label": "Cabinets",
+   "group": "living",
+   "placement": "floor",
+   "generator": "storage",
+   "size_breaks_cm": [
+    80,
+    130
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted"
+   ],
+   "synonyms": [
+    "cabinet",
+    "cupboard",
+    "display cabinet",
+    "storage cabinet"
+   ]
+  },
+  {
+   "id": "sideboard",
+   "label": "Sideboards",
+   "group": "living",
+   "placement": "floor",
+   "generator": "storage",
+   "size_breaks_cm": [
+    140,
+    180
+   ],
+   "materials": [
+    "wood_oak",
+    "wood_walnut",
+    "white_wood",
+    "painted"
+   ],
+   "synonyms": [
+    "sideboard",
+    "buffet",
+    "credenza"
+   ]
+  },
+  {
+   "id": "tv",
+   "label": "Televisions",
+   "group": "living",
+   "placement": "floor",
+   "generator": "tv",
+   "size_breaks_cm": [
+    110,
+    150
+   ],
+   "materials": [],
+   "synonyms": [
+    "tv",
+    "television",
+    "screen"
+   ]
+  },
+  {
+   "id": "floor_lamp",
+   "label": "Floor lamps",
+   "group": "lighting",
+   "placement": "floor",
+   "generator": "floor_lamp",
+   "size_breaks_cm": [
+    35,
+    50
+   ],
+   "materials": [
+    "metal_black",
+    "metal_brass",
+    "metal_steel"
+   ],
+   "synonyms": [
+    "floor lamp",
+    "standing lamp",
+    "lamp",
+    "arc lamp"
+   ]
+  },
+  {
+   "id": "table_lamp",
+   "label": "Table lamps",
+   "group": "lighting",
+   "placement": "surface",
+   "generator": "table_lamp",
+   "size_breaks_cm": [
+    30,
+    40
+   ],
+   "materials": [
+    "metal_black",
+    "metal_brass",
+    "metal_steel"
+   ],
+   "synonyms": [
+    "table lamp",
+    "desk lamp",
+    "bedside lamp",
+    "lamp"
+   ]
+  },
+  {
+   "id": "pendant_light",
+   "label": "Pendant lights",
+   "group": "lighting",
+   "placement": "ceiling",
+   "generator": "pendant",
+   "size_breaks_cm": [
+    30,
+    50
+   ],
+   "materials": [
+    "metal_black",
+    "metal_brass",
+    "metal_steel"
+   ],
+   "synonyms": [
+    "pendant",
+    "pendant light",
+    "hanging light",
+    "hanging lamp"
+   ]
+  },
+  {
+   "id": "chandelier",
+   "label": "Chandeliers",
+   "group": "lighting",
+   "placement": "ceiling",
+   "generator": "chandelier",
+   "size_breaks_cm": [
+    60,
+    80
+   ],
+   "materials": [
+    "metal_black",
+    "metal_brass",
+    "metal_steel"
+   ],
+   "synonyms": [
+    "chandelier"
+   ]
+  },
+  {
+   "id": "ceiling_light",
+   "label": "Ceiling lights",
+   "group": "lighting",
+   "placement": "ceiling",
+   "generator": "ceiling_light",
+   "size_breaks_cm": [
+    35,
+    50
+   ],
+   "materials": [
+    "metal_black",
+    "metal_brass",
+    "metal_steel"
+   ],
+   "synonyms": [
+    "ceiling light",
+    "flush mount",
+    "ceiling lamp"
+   ]
+  },
+  {
+   "id": "wall_light",
+   "label": "Wall lights",
+   "group": "lighting",
+   "placement": "wall",
+   "generator": "wall_light",
+   "size_breaks_cm": [
+    15,
+    25
+   ],
+   "materials": [
+    "metal_black",
+    "metal_brass",
+    "metal_steel"
+   ],
+   "synonyms": [
+    "wall light",
+    "sconce",
+    "wall lamp"
+   ]
+  },
+  {
+   "id": "plant",
+   "label": "Plants",
+   "group": "decoration",
+   "placement": "floor",
+   "generator": "plant",
+   "size_breaks_cm": [
+    40,
+    60
+   ],
+   "materials": [],
+   "synonyms": [
+    "plant",
+    "plants",
+    "tree",
+    "greenery",
+    "palm",
+    "succulent"
+   ]
+  },
+  {
+   "id": "vase",
+   "label": "Vases",
+   "group": "decoration",
+   "placement": "surface",
+   "generator": "vase",
+   "size_breaks_cm": [
+    15,
+    22
+   ],
+   "materials": [],
+   "synonyms": [
+    "vase",
+    "vases",
+    "flowers"
+   ]
+  },
+  {
+   "id": "mirror",
+   "label": "Mirrors",
+   "group": "decoration",
+   "placement": "wall",
+   "generator": "mirror",
+   "size_breaks_cm": [
+    50,
+    80
+   ],
+   "materials": [
+    "metal_brass",
+    "metal_black",
+    "wood_oak",
+    "wood_walnut",
+    "white_wood"
+   ],
+   "synonyms": [
+    "mirror",
+    "mirrors"
+   ]
+  },
+  {
+   "id": "wall_art",
+   "label": "Paintings & wall art",
+   "group": "decoration",
+   "placement": "wall",
+   "generator": "painting",
+   "size_breaks_cm": [
+    60,
+    100
+   ],
+   "materials": [
+    "metal_black",
+    "metal_brass",
+    "wood_oak",
+    "wood_walnut",
+    "white_wood"
+   ],
+   "synonyms": [
+    "painting",
+    "art",
+    "wall art",
+    "print",
+    "poster",
+    "canvas",
+    "artwork",
+    "frame"
+   ]
+  },
+  {
+   "id": "clock",
+   "label": "Clocks",
+   "group": "decoration",
+   "placement": "wall",
+   "generator": "clock",
+   "size_breaks_cm": [
+    30,
+    45
+   ],
+   "materials": [
+    "metal_black",
+    "metal_brass",
+    "wood_oak",
+    "white_wood"
+   ],
+   "synonyms": [
+    "clock",
+    "wall clock"
+   ]
+  },
+  {
+   "id": "decor",
+   "label": "Decorative objects",
+   "group": "decoration",
+   "placement": "surface",
+   "generator": "decor",
+   "size_breaks_cm": [
+    15,
+    30
+   ],
+   "materials": [],
+   "synonyms": [
+    "decor",
+    "decoration",
+    "ornament",
+    "bowl",
+    "candles",
+    "sculpture"
+   ]
+  },
+  {
+   "id": "curtains",
+   "label": "Curtains",
+   "group": "curtains",
+   "placement": "wall",
+   "generator": "curtains",
+   "size_breaks_cm": [
+    160,
+    260
+   ],
+   "materials": [
+    "fabric",
+    "velvet",
+    "linen"
+   ],
+   "synonyms": [
+    "curtain",
+    "curtains",
+    "drapes",
+    "drape"
+   ]
+  },
+  {
+   "id": "blinds",
+   "label": "Blinds",
+   "group": "curtains",
+   "placement": "wall",
+   "generator": "blinds",
+   "size_breaks_cm": [
+    100,
+    160
+   ],
+   "materials": [
+    "fabric",
+    "painted"
+   ],
+   "synonyms": [
+    "blind",
+    "blinds",
+    "roller blind",
+    "venetian"
+   ]
+  },
+  {
+   "id": "rug",
+   "label": "Rugs",
+   "group": "rugs",
+   "placement": "floor_flat",
+   "generator": "rug",
+   "size_breaks_cm": [
+    150,
+    220
+   ],
+   "materials": [
+    "carpet"
+   ],
+   "synonyms": [
+    "rug",
+    "rugs",
+    "carpet",
+    "runner",
+    "mat"
+   ]
+  }
+ ],
+ "colors": {
+  "gray": "#8c8a86",
+  "charcoal": "#3f3f42",
+  "black": "#222222",
+  "white": "#f2f0eb",
+  "beige": "#d8ccb8",
+  "cream": "#eee6d6",
+  "brown": "#6b4a32",
+  "tan": "#b98a58",
+  "navy": "#2c3e57",
+  "blue": "#5b7fa6",
+  "green": "#3f5e5a",
+  "sage": "#7d9a8c",
+  "olive": "#6b6b3a",
+  "mustard": "#c9a13b",
+  "terracotta": "#b8643f",
+  "rust": "#8a3b2e",
+  "blush": "#e6c9c4",
+  "pink": "#b5838d",
+  "teal": "#2f6f73",
+  "gold": "#b8903e",
+  "oak": "#b98a58",
+  "walnut": "#6b4a32",
+  "natural": "#c9a97c",
+  "silver": "#a7abae"
+ }
+}

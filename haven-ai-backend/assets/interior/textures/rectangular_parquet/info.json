@@ -1,0 +1,10 @@
+{
+ "id": "rectangular_parquet",
+ "name": "Rectangular Parquet",
+ "license": "CC0",
+ "source": "https://polyhaven.com/a/rectangular_parquet",
+ "dimensions_mm": [
+  2250,
+  2250
+ ]
+}

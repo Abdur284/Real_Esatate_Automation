@@ -1,0 +1,10 @@
+{
+ "id": "herringbone_parquet",
+ "name": "Herringbone Parquet",
+ "license": "CC0",
+ "source": "https://polyhaven.com/a/herringbone_parquet",
+ "dimensions_mm": [
+  3400.0000953674316,
+  3400.0000953674316
+ ]
+}

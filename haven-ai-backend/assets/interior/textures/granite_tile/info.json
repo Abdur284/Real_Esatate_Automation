@@ -1,0 +1,10 @@
+{
+ "id": "granite_tile",
+ "name": "Granite Tile",
+ "license": "CC0",
+ "source": "https://polyhaven.com/a/granite_tile",
+ "dimensions_mm": [
+  2299.999952316284,
+  2299.999952316284
+ ]
+}

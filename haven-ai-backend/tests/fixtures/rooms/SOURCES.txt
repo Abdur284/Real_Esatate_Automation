@@ -1,0 +1,5 @@
+Room photos from Unsplash (Unsplash License, free to use):
+- living_sofa.jpg      https://unsplash.com/photos/1555041469-a586c61ea9bc
+- kitchen.jpg          https://unsplash.com/photos/1484154218962-a197022b5858
+- armchair_corner.jpg  https://unsplash.com/photos/1586023492125-27b2c045efd7
+Downscaled to 960 px for the test suite.
