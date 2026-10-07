@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../api';
+import { useAuth } from '../../auth/AuthContext';
 
 // The signed-in user's saved interior designs: open one to keep editing it.
 
@@ -19,7 +20,7 @@ export default function SavedDesigns({ onOpen }) {
     const [designs, setDesigns] = useState(null);
     const [error, setError] = useState(null);
     const [opening, setOpening] = useState(null);
-    const signedIn = !!api.interior.token();
+    const signedIn = !!useAuth().user;
 
     useEffect(() => {
         if (!signedIn) return;

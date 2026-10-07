@@ -1,11 +1,14 @@
+import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from app.core.ratelimit import rate_limit
 from app.services.design2d.service import Design2DError, generate_2d_plan
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class PlanRequest(BaseModel):
@@ -15,7 +18,7 @@ class PlanRequest(BaseModel):
     floors: Optional[int] = None
 
 
-@router.post("/generate")
+@router.post("/generate", dependencies=[Depends(rate_limit("design2d"))])
 async def generate(req: PlanRequest):
     """
     Generates a 2D floor-plan specification from a natural-language brief.
@@ -37,5 +40,6 @@ async def generate(req: PlanRequest):
         )
     except Design2DError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"2D plan generation error: {exc}")
+    except Exception:
+        logger.exception("2D plan generation failed")
+        raise HTTPException(status_code=500, detail="The floor plan could not be generated. Please try again.")

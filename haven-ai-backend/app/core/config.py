@@ -1,16 +1,28 @@
-from pydantic_settings import BaseSettings
-from typing import List
+import json
+from typing import Annotated, List
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(case_sensitive=True, extra="ignore", env_file=".env")
+
     PROJECT_NAME: str = "Haven AI"
     API_V1_STR: str = "/api"
-    CORS_ORIGINS: List[str] = [
+    # Browser origins allowed to call the API. In .env either a JSON list or a
+    # comma separated string: CORS_ORIGINS=https://haven.example.com,http://localhost:5000
+    CORS_ORIGINS: Annotated[List[str], NoDecode] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:5000",
         "http://127.0.0.1:5000",
     ]
-    
+
+    # Requests per minute per caller (signed-in uid, else client IP) on the
+    # endpoints that call Gemini or do heavy CPU work. 0 disables the limit.
+    RATE_LIMIT_PER_MINUTE: int = 20
+
     # API keys for ML services
     GEMINI_API_KEY: str = ""
     # Model for the chatbot, and the ordered fallback list for the 2D planner
@@ -37,10 +49,15 @@ class Settings(BaseSettings):
     INTERIOR_ASSET_DIR: str = "assets/interior"
     FIREBASE_CREDS_PATH: str = "firebase-credentials.json"
 
-    class Config:
-        case_sensitive = True
-        extra = "ignore"
-        env_file = ".env"
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def _split_origins(cls, value):
+        if isinstance(value, str):
+            value = value.strip()
+            if value.startswith("["):
+                return json.loads(value)
+            return [o.strip() for o in value.split(",") if o.strip()]
+        return value
 
 
 settings = Settings()

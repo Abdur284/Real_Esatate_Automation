@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api';
+import Markdown from './Markdown';
 
 
 const SYSTEM_CONTEXT = `You are Haven.AI's smart assistant — a helpful, friendly AI for a real estate and home design platform called Haven.AI. 
@@ -71,7 +72,6 @@ export default function AIChatBot() {
 
         try {
             const data = await api.chat.send({
-                userId: 'guest',
                 message: msg,
                 context: SYSTEM_CONTEXT,
                 history: currentHistory
@@ -91,7 +91,7 @@ export default function AIChatBot() {
             }
         } catch (error) {
             console.error("Connection error:", error);
-            setMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble connecting to the Haven AI backend. Please make sure the server is running." }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: error?.message || "I couldn't reach the assistant right now. Please try again in a moment." }]);
         } finally {
             setIsLoading(false);
         }
@@ -256,53 +256,7 @@ export default function AIChatBot() {
                                                 <div className="chatbot-bubble-label">Haven.AI</div>
                                             )}
                                             <div className="chatbot-bubble-text">
-                                                {m.content.split('\n').map((line, li, arr) => {
-                                                    const parts = [];
-                                                    let lastIdx = 0;
-                                                    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-                                                    let match;
-                                                    
-                                                    while ((match = linkRegex.exec(line)) !== null) {
-                                                        // Push text before link
-                                                        if (match.index > lastIdx) {
-                                                            parts.push(line.substring(lastIdx, match.index));
-                                                        }
-                                                        // Push link
-                                                        const linkText = match[1];
-                                                        const linkUrl = match[2];
-                                                        const isInternal = linkUrl.startsWith('/');
-                                                        
-                                                        parts.push(
-                                                            <a 
-                                                                key={`${li}-${match.index}`}
-                                                                onClick={(e) => {
-                                                                    if (isInternal) {
-                                                                        e.preventDefault();
-                                                                        navigate(linkUrl);
-                                                                    }
-                                                                }}
-                                                                href={linkUrl}
-                                                                target={isInternal ? "_self" : "_blank"}
-                                                                style={{ color: 'var(--accent)', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer' }}
-                                                            >
-                                                                {linkText}
-                                                            </a>
-                                                        );
-                                                        lastIdx = linkRegex.lastIndex;
-                                                    }
-                                                    
-                                                    // Push remaining text
-                                                    if (lastIdx < line.length) {
-                                                        parts.push(line.substring(lastIdx));
-                                                    }
-
-                                                    return (
-                                                        <span key={li}>
-                                                            {parts.length > 0 ? parts : line}
-                                                            {li < arr.length - 1 && <br />}
-                                                        </span>
-                                                    );
-                                                })}
+                                                {m.role === 'assistant' ? <Markdown text={m.content} /> : m.content}
                                             </div>
                                         </div>
                                     ))

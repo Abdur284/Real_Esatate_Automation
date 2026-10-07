@@ -4,76 +4,110 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
+// ── Who is calling ──
+// AuthContext registers a function returning the signed-in user's Firebase ID
+// token (refreshed automatically by the SDK); null for guests.
+let tokenProvider = null;
+
+export function setTokenProvider(fn) {
+  tokenProvider = fn;
+}
+
+async function authHeaders() {
+  if (!tokenProvider) return {};
+  try {
+    const token = await tokenProvider();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
+// Guests' AI chat is kept together by a random id this browser generated once.
+const GUEST_SESSION_KEY = 'haven_chat_session';
+
+function guestSessionId() {
+  try {
+    let id = localStorage.getItem(GUEST_SESSION_KEY);
+    if (!id || !/^[A-Za-z0-9_-]{8,64}$/.test(id)) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`).replace(/[^A-Za-z0-9_-]/g, '');
+      localStorage.setItem(GUEST_SESSION_KEY, id);
+    }
+    return id;
+  } catch {
+    return `tab${Date.now()}`;
+  }
+}
+
+function errorFrom(status, detail, fallback) {
+  const err = new Error(typeof detail?.detail === 'string' ? detail.detail : fallback);
+  err.status = status;
+  return err;
+}
+
+/** fetch with the user's token; JSON in and out; errors carry .status and the server's message */
+async function request(path, { method = 'GET', body, form, fallback } = {}) {
+  const headers = await authHeaders();
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  let res;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers,
+      body: form || (body === undefined ? undefined : JSON.stringify(body)),
+    });
+  } catch {
+    throw new Error('Could not reach the server. Check your connection and try again.');
+  }
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    throw errorFrom(res.status, detail, fallback || `Request failed (${res.status}).`);
+  }
+  return res.json();
+}
+
 const api = {
   chat: {
-    /** Send a message to the AI chat backend */
-    send: async ({ userId = 'guest', message, context = '', history = [] }) => {
-      const res = await fetch(`${API_BASE_URL}/api/chat/send`, {
+    /** Send a message to the AI chat backend (signed-in users are identified by their token) */
+    send: ({ message, context = '', history = [] }) =>
+      request('/api/chat/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          message,
-          context,
-          conversation_history: history
-        }),
-      });
-      if (!res.ok) {
-        throw new Error(`API error: ${res.status}`);
-      }
-      return res.json();
-    },
+        body: { session_id: guestSessionId(), message, context, conversation_history: history },
+      }),
 
     /** Check if the chat service is active */
-    status: async () => {
-      const res = await fetch(`${API_BASE_URL}/api/chat/status`);
-      return res.json();
-    },
+    status: () => request('/api/chat/status'),
   },
 
   design2d: {
     /** Generate a 2D floor-plan specification (Gemini + server-side validation) */
-    generate: async ({ prompt, plotWidthFt, plotLengthFt, floors }) => {
-      const res = await fetch(`${API_BASE_URL}/api/design/2d/generate`, {
+    generate: ({ prompt, plotWidthFt, plotLengthFt, floors }) =>
+      request('/api/design/2d/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           prompt,
           plot_width_ft: plotWidthFt ?? null,
           plot_length_ft: plotLengthFt ?? null,
           floors: floors ?? null,
-        }),
-      });
-      if (!res.ok) {
-        const detail = await res.json().catch(() => null);
-        throw new Error(detail?.detail || `API error: ${res.status}`);
-      }
-      return res.json();
-    },
+        },
+      }),
   },
 
   design3d: {
     /** Generate a validated 3D building model from a brief + optional plot dims */
-    generate: async ({ prompt, plotWidthFt, plotLengthFt, storeys }) => {
-      const res = await fetch(`${API_BASE_URL}/api/design/3d/generate`, {
+    generate: ({ prompt, plotWidthFt, plotLengthFt, storeys }) =>
+      request('/api/design/3d/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           prompt,
           plot_width_ft: plotWidthFt ?? null,
           plot_length_ft: plotLengthFt ?? null,
           storeys: storeys ?? null,
-        }),
-      });
-      if (!res.ok) {
-        const detail = await res.json().catch(() => null);
-        throw new Error(detail?.detail || `API error: ${res.status}`);
-      }
-      return res.json();
-    },
+        },
+      }),
 
     /** Generate a 3D design from a photo of the existing property (+ brief) */
-    generateFromImage: async ({ image, prompt, plotWidthFt, plotLengthFt, storeys, render, pixels, existing = {} }) => {
+    generateFromImage: ({ image, prompt, plotWidthFt, plotLengthFt, storeys, render, pixels, existing = {} }) => {
       const form = new FormData();
       form.append('image', image);
       form.append('prompt', prompt || '');
@@ -93,108 +127,57 @@ const api = {
       }
       form.append('garage_door', existing.garageDoor ? 'true' : 'false');
       form.append('existing_balcony', existing.balcony ? 'true' : 'false');
-      const res = await fetch(`${API_BASE_URL}/api/design/3d/generate-from-image`, { method: 'POST', body: form });
-      if (!res.ok) {
-        const detail = await res.json().catch(() => null);
-        throw new Error(detail?.detail || `API error: ${res.status}`);
-      }
-      return res.json();
+      return request('/api/design/3d/generate-from-image', { method: 'POST', form });
     },
 
     /** Layer 1: read a 2D floor-plan image into a structured plan (for review) */
-    analyzePlan: async ({ image, widthFt, depthFt, front = 'bottom' }) => {
+    analyzePlan: ({ image, widthFt, depthFt, front = 'bottom' }) => {
       const form = new FormData();
       form.append('image', image);
       if (widthFt) form.append('width_ft', String(widthFt));
       if (depthFt) form.append('depth_ft', String(depthFt));
       form.append('front', front);
-      const res = await fetch(`${API_BASE_URL}/api/design/3d/analyze`, { method: 'POST', body: form });
-      if (!res.ok) {
-        const detail = await res.json().catch(() => null);
-        const err = new Error(typeof detail?.detail === 'string' ? detail.detail : `API error: ${res.status}`);
-        err.status = res.status;
-        throw err;
-      }
-      return res.json();
+      return request('/api/design/3d/analyze', { method: 'POST', form });
     },
 
     /** Absolute URL of a generated GLB (the API returns a path) */
     modelUrl: (path) => (path ? `${API_BASE_URL}${path}` : null),
 
     /** Build a 3D model from a structured plan (design2d.generate or analyzePlan) */
-    fromPlan2d: async (plan) => {
-      const res = await fetch(`${API_BASE_URL}/api/design/3d/from-2d`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan }),
-      });
-      if (!res.ok) {
-        const detail = await res.json().catch(() => null);
-        throw new Error(detail?.detail || `API error: ${res.status}`);
-      }
-      return res.json();
-    },
+    fromPlan2d: (plan) => request('/api/design/3d/from-2d', { method: 'POST', body: { plan } }),
   },
 
   interior: {
-    /** The signed-in user's Firebase ID token (saved by the Signup page), or null */
-    token: () => {
-      try { return JSON.parse(localStorage.getItem('housing_user') || 'null')?.idToken || null; } catch { return null; }
-    },
-
     /** Upload a room photo; reports upload progress (0-1). Resolves to the scene response. */
-    analyze: (file, onProgress) => new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${API_BASE_URL}/api/interior/scenes`);
-      const token = api.interior.token();
-      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      xhr.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
-      xhr.upload.onload = () => onProgress && onProgress(1);
-      xhr.onload = () => {
-        let body = null;
-        try { body = JSON.parse(xhr.responseText); } catch { /* not JSON */ }
-        if (xhr.status >= 200 && xhr.status < 300) return resolve(body);
-        const err = new Error(typeof body?.detail === 'string' ? body.detail : `Upload failed (${xhr.status}).`);
-        err.status = xhr.status;
-        reject(err);
-      };
-      xhr.onerror = () => reject(new Error('Could not reach the server. Check your connection and try again.'));
-      xhr.ontimeout = () => reject(new Error('The server took too long to answer. Please try again.'));
-      xhr.timeout = 120000;
-      const form = new FormData();
-      form.append('image', file);
-      xhr.send(form);
-    }),
-
-    /** JSON request with the user's token; errors carry .status and the server's message */
-    request: async (path, { method = 'GET', body } = {}) => {
-      const headers = {};
-      const token = api.interior.token();
-      if (token) headers.Authorization = `Bearer ${token}`;
-      if (body !== undefined) headers['Content-Type'] = 'application/json';
-      let res;
-      try {
-        res = await fetch(`${API_BASE_URL}/api/interior${path}`, {
-          method, headers, body: body === undefined ? undefined : JSON.stringify(body),
-        });
-      } catch {
-        throw new Error('Could not reach the server. Check your connection and try again.');
-      }
-      if (!res.ok) {
-        const detail = await res.json().catch(() => null);
-        const err = new Error(typeof detail?.detail === 'string' ? detail.detail : `Request failed (${res.status}).`);
-        err.status = res.status;
-        throw err;
-      }
-      return res.json();
+    analyze: async (file, onProgress) => {
+      const headers = await authHeaders();
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${API_BASE_URL}/api/interior/scenes`);
+        if (headers.Authorization) xhr.setRequestHeader('Authorization', headers.Authorization);
+        xhr.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
+        xhr.upload.onload = () => onProgress && onProgress(1);
+        xhr.onload = () => {
+          let body = null;
+          try { body = JSON.parse(xhr.responseText); } catch { /* not JSON */ }
+          if (xhr.status >= 200 && xhr.status < 300) return resolve(body);
+          reject(errorFrom(xhr.status, body, `Upload failed (${xhr.status}).`));
+        };
+        xhr.onerror = () => reject(new Error('Could not reach the server. Check your connection and try again.'));
+        xhr.ontimeout = () => reject(new Error('The server took too long to answer. Please try again.'));
+        xhr.timeout = 120000;
+        const form = new FormData();
+        form.append('image', file);
+        xhr.send(form);
+      });
     },
+
+    /** JSON request under /api/interior with the user's token */
+    request: (path, opts) => request(`/api/interior${path}`, opts),
 
     /** Fetches an image the API serves (with the token) and returns an object URL */
     image: async (path) => {
-      const headers = {};
-      const token = api.interior.token();
-      if (token) headers.Authorization = `Bearer ${token}`;
-      const res = await fetch(`${API_BASE_URL}${path}`, { headers });
+      const res = await fetch(`${API_BASE_URL}${path}`, { headers: await authHeaders() });
       if (!res.ok) {
         const err = new Error(`Image request failed (${res.status}).`);
         err.status = res.status;
@@ -236,11 +219,21 @@ const api = {
     },
   },
 
-  /** Health check — root endpoint */
-  health: async () => {
-    const res = await fetch(`${API_BASE_URL}/`);
-    return res.json();
+  /** Administrator endpoints (require the `admin` claim on the signed-in account) */
+  admin: {
+    stats: () => request('/api/admin/stats'),
+    activity: () => request('/api/admin/activity'),
+    users: () => request('/api/admin/users'),
+    deleteUser: (uid) => request(`/api/admin/users/${encodeURIComponent(uid)}`, { method: 'DELETE' }),
+    properties: (verified) =>
+      request(`/api/admin/properties${verified === undefined ? '' : `?verified=${verified}`}`),
+    verifyProperty: (id) => request(`/api/admin/properties/${encodeURIComponent(id)}/verify`, { method: 'POST' }),
+    resetViews: () => request('/api/admin/properties/reset-views', { method: 'POST' }),
+    health: () => request('/api/admin/health'),
   },
+
+  /** Health check — root endpoint */
+  health: () => request('/'),
 };
 
 export default api;

@@ -1,6 +1,12 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.endpoints import chat, design_2d, design_3d, interior
+
+from app.api.endpoints import admin, chat, design_2d, design_3d, interior
+from app.core.config import settings
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 app = FastAPI(
     title="Haven AI Backend",
@@ -8,17 +14,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5000",   # Vite dev server (actual port)
-    "http://127.0.0.1:5000",
-]
-
+# Allowed browser origins come from CORS_ORIGINS in .env (see config.py).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,6 +29,7 @@ app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(design_2d.router, prefix="/api/design/2d", tags=["2D Design"])
 app.include_router(design_3d.router, prefix="/api/design/3d", tags=["3D Design"])
 app.include_router(interior.router, prefix="/api/interior", tags=["Interior Design"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 
 @app.get("/")
 async def root():

@@ -1,16 +1,43 @@
-# React + Vite
+# Haven.AI frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite. In development the Vite server (port 5000) proxies `/api` to
+the backend on port 8000.
 
-Currently, two official plugins are available:
+```bash
+npm install
+npm run dev        # http://localhost:5000
+npm test           # vitest
+npm run lint       # eslint
+npm run build      # production build in dist/
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Configuration: copy `.env.example` to `.env.local`. In production set
+`VITE_API_BASE_URL` to the backend's URL.
 
-## React Compiler
+## Structure
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```
+src/
+  App.jsx                 routes (pages are lazy-loaded), providers
+  api.js                  every backend call; adds the user's Firebase ID token
+  firebase.js             Firebase app, Auth and Firestore
+  auth/
+    AuthContext.jsx       who is signed in (Firebase Auth SDK): user, profile, isAdmin
+    ProtectedRoute.jsx    sign-in / seller / admin gates for routes
+  components/
+    Layout.jsx            navbar + page + footer for every route
+    ErrorBoundary.jsx     recoverable error screen instead of a blank page
+    Toast.jsx             notifications (useToast) instead of alert()
+    Markdown.jsx          safe rendering of the assistant's Markdown replies
+    ...                   feature components (interior/, threeD/, chat widgets)
+  pages/                  one file per route
+```
 
-## Expanding the ESLint configuration
+## Auth and data access
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+* Sign-in uses the **Firebase Auth SDK** only (`useAuth()`); tokens refresh
+  automatically and are attached to API calls by `api.js`.
+* Listings, profiles and buyer ↔ dealer chats are read/written directly in
+  Firestore and protected by `/firestore.rules` in the repository root.
+* Admin actions go through the backend (`/api/admin/*`), which checks the
+  `admin` custom claim.

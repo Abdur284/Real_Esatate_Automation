@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../api';
+import Markdown from './Markdown';
 
 // Using the centralized API module for backend calls
 
@@ -35,7 +36,6 @@ export default function AIChat({ title, icon, welcomeText, placeholder, chips, s
         setIsLoading(true);
         try {
             const data = await api.chat.send({
-                userId: 'guest',
                 message: msg,
                 context: systemContext || '',
             });
@@ -43,7 +43,7 @@ export default function AIChat({ title, icon, welcomeText, placeholder, chips, s
             setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
         } catch (error) {
             console.error("Connection error:", error);
-            setMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble connecting to the Haven AI backend. Please make sure the server is running." }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: error?.message || "I couldn't reach the assistant right now. Please try again in a moment." }]);
         } finally {
             setIsLoading(false);
         }
@@ -81,9 +81,7 @@ export default function AIChat({ title, icon, welcomeText, placeholder, chips, s
                 {messages.map((m, i) => (
                     <div key={i} className={`chat-bubble ${m.role}`}>
                         {m.role === 'assistant' && <span className="bubble-label">AI Assistant</span>}
-                        {m.content.split('\n').map((line, li) => (
-                            <span key={li}>{line}{li < m.content.split('\n').length - 1 && <br />}</span>
-                        ))}
+                        {m.role === 'assistant' ? <Markdown text={m.content} /> : m.content}
                     </div>
                 ))}
                 {isLoading && (

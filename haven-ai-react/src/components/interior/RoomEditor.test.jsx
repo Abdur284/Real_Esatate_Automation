@@ -161,7 +161,6 @@ describe('room editor', () => {
     });
 
     it('asks guests to sign in before saving', async () => {
-        localStorage.removeItem('housing_user');
         renderEditor();
         fireEvent.click(screen.getByTitle('Save design'));
         expect(await screen.findByText(/to save designs to your account/)).toBeInTheDocument();

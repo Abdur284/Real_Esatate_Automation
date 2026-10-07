@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db, auth } from '../firebase';
+import { db } from '../firebase';
+import { useAuth } from '../auth/AuthContext';
 import { collection, getDocs } from 'firebase/firestore';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 
 export default function Properties() {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQ, setSearchQ] = useState('');
@@ -14,22 +14,6 @@ export default function Properties() {
     const [filterStatus, setFilterStatus] = useState('');
     const [filterBeds, setFilterBeds] = useState('');
     const [activeTab, setActiveTab] = useState('all');
-    const [saved, setSaved] = useState(new Set());
-    const [aiFilters, setAiFilters] = useState(null);
-
-    useEffect(() => {
-        const handleAIUpdate = (e) => {
-            setAiFilters(e.detail.filters);
-            // Smooth scroll to sidebar on desktop
-            const sidebar = document.querySelector('.sidebar-recommendations');
-            if (sidebar && window.innerWidth > 1100) {
-                sidebar.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        };
-        window.addEventListener('ai-recommendation-update', handleAIUpdate);
-        return () => window.removeEventListener('ai-recommendation-update', handleAIUpdate);
-    }, []);
-
     useEffect(() => {
         const fetchProperties = async () => {
             setLoading(true);
@@ -107,33 +91,16 @@ export default function Properties() {
         return true;
     });
 
-    const toggleSave = (e, id) => {
-        e.stopPropagation();
-        setSaved(prev => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-        });
-    };
-
-    const openProperty = (p) => {
-        sessionStorage.setItem('hs_property', JSON.stringify(p));
-        navigate('/property-detail');
-    };
+    const openProperty = (p) => navigate(`/property/${p.id}`);
 
     const contactAndRedirect = (e, p) => {
         e.stopPropagation();
-        const user = auth.currentUser;
-        if (!user) {
-            navigate('/signup?tab=signup');
-            return;
-        }
-        navigate(`/chat?dealerId=${p.dealerId}&propertyId=${p.id}&propertyTitle=${encodeURIComponent(p.title)}`);
+        const target = `/chat?propertyId=${encodeURIComponent(p.id)}`;
+        navigate(user ? target : `/signup?tab=login&next=${encodeURIComponent(target)}`);
     };
 
     return (
         <>
-            <Navbar />
             <section className="page-hero">
                 <div className="page-hero-inner">
                     <div className="page-hero-icon">🏡</div>
@@ -259,7 +226,6 @@ export default function Properties() {
                 </div>
             </div>
 
-            <Footer />
         </>
     );
 }

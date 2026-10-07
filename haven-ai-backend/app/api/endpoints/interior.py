@@ -28,6 +28,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.core.auth import optional_user, require_user
 from app.core.firebase import FirebaseUnavailable
+from app.core.ratelimit import rate_limit
 from app.services.interior import service
 from app.services.interior.designs import DesignNotFound, get_repository
 from app.services.interior.image_input import MAX_IMAGE_BYTES, RoomImageRejected
@@ -194,7 +195,7 @@ def _fail(exc: Exception):
 
 # ---- scenes --------------------------------------------------------------------
 
-@router.post("/scenes")
+@router.post("/scenes", dependencies=[Depends(rate_limit("interior-upload"))])
 async def create_scene(image: UploadFile = File(...), uid: Optional[str] = Depends(optional_user)):
     """Upload a room photo (JPG/PNG/WebP, max 10 MB, checked by content). The
     photo is analysed once (about 2-4 s on CPU) into an editable scene."""
@@ -288,7 +289,7 @@ async def sprite(scene_id: str, object_id: str, uid: Optional[str] = Depends(opt
                              "Access-Control-Expose-Headers": "X-Bounds", "Cache-Control": "no-store"})
 
 
-@router.post("/scenes/{scene_id}/final")
+@router.post("/scenes/{scene_id}/final", dependencies=[Depends(rate_limit("interior-final"))])
 async def final(scene_id: str, req: FinalRequest, uid: Optional[str] = Depends(optional_user)):
     """Final image of the current design, rendered from the scene with the
     high-quality assets, as PNG or JPEG."""

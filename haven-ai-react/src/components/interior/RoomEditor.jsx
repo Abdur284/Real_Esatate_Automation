@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api';
+import { useAuth } from '../../auth/AuthContext';
 import EditorStage from './EditorStage';
 import ObjectLibrary from './ObjectLibrary';
 import { LayersPanel, ObjectPanel, SurfacePanel } from './PropertiesPanel';
@@ -24,7 +25,7 @@ function Toasts({ items, onClose }) {
 }
 
 function SaveMenu({ design, onSave, onClose, saving }) {
-    const signedIn = !!api.interior.token();
+    const signedIn = !!useAuth().user;
     const [name, setName] = useState(design?.name || 'My room design');
     return (
         <div className="ie-popover ie-popover-narrow" role="dialog" aria-label="Save design">

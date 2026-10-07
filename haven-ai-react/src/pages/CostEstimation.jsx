@@ -1,11 +1,8 @@
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import AIChat from '../components/AIChat';
 
 export default function CostEstimation() {
     return (
         <>
-            <Navbar />
             <section className="page-hero">
                 <div className="page-hero-inner">
                     <div className="page-hero-icon">💰</div>
@@ -45,7 +42,6 @@ export default function CostEstimation() {
                     </div>
                 </div>
             </div>
-            <Footer />
         </>
     );
 }

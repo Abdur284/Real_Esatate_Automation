@@ -1,19 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { collection, addDoc, query, where, getDocs, serverTimestamp, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
-import { auth, db } from '../firebase';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+import { db } from '../firebase';
+import { useAuth } from '../auth/AuthContext';
+import { useToast } from '../components/Toast';
 
 export default function DealerDashboard() {
     const navigate = useNavigate();
+    const toast = useToast();
+    const { user, profile } = useAuth();
     const [properties, setProperties] = useState([]);
     const [allProperties, setAllProperties] = useState([]);
     const [inquiries, setInquiries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showUpload, setShowUpload] = useState(false);
-    const [uploadStep, setUploadStep] = useState(1);
-    const [mapType, setMapType] = useState('url'); // 'url' or 'image'
     const [activeTab, setActiveTab] = useState('my'); // 'my' or 'all'
 
     // Form State
@@ -31,25 +31,7 @@ export default function DealerDashboard() {
         image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&q=80'
     });
 
-    const user = auth.currentUser;
-
-    useEffect(() => {
-        if (user) {
-            fetchMyProperties();
-            fetchAllProperties();
-
-            // Listen to chats/inquiries for this dealer
-            const chatQuery = query(collection(db, 'chats'), where('dealerId', '==', user.uid));
-            const unsub = onSnapshot(chatQuery, (snap) => {
-                const list = [];
-                snap.forEach(d => list.push({ id: d.id, ...d.data() }));
-                setInquiries(list);
-            });
-            return () => unsub();
-        }
-    }, [user]);
-
-    const fetchAllProperties = async () => {
+    const fetchAllProperties = useCallback(async () => {
         try {
             const snap = await getDocs(collection(db, 'properties'));
             const list = [];
@@ -72,9 +54,9 @@ export default function DealerDashboard() {
         } catch (e) {
             console.error("Global fetch failed", e);
         }
-    };
+    }, []);
 
-    const fetchMyProperties = async () => {
+    const fetchMyProperties = useCallback(async () => {
         setLoading(true);
         try {
             const q = query(collection(db, 'properties'), where('dealerId', '==', user.uid));
@@ -87,7 +69,23 @@ export default function DealerDashboard() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user]);
+
+    useEffect(() => {
+        if (user) {
+            fetchMyProperties();
+            fetchAllProperties();
+
+            // Listen to chats/inquiries for this dealer
+            const chatQuery = query(collection(db, 'chats'), where('dealerId', '==', user.uid));
+            const unsub = onSnapshot(chatQuery, (snap) => {
+                const list = [];
+                snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+                setInquiries(list);
+            });
+            return () => unsub();
+        }
+    }, [user, fetchMyProperties, fetchAllProperties]);
 
     const handleUpload = async (e) => {
         e.preventDefault();
@@ -100,7 +98,8 @@ export default function DealerDashboard() {
                 beds: parseInt(formData.beds),
                 baths: parseInt(formData.baths),
                 dealerId: user.uid,
-                dealerName: user.displayName,
+                dealerName: profile?.name || user.displayName || 'Dealer',
+                verified: false,
                 views: 0,
                 createdAt: serverTimestamp()
             });
@@ -111,8 +110,9 @@ export default function DealerDashboard() {
                 image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&q=80'
             });
             fetchMyProperties();
-        } catch (error) {
-            alert("Error uploading property: " + error.message);
+            toast.success('Your listing is published.');
+        } catch {
+            toast.error('The listing could not be published. Please check the form and try again.');
         }
     };
 
@@ -121,32 +121,15 @@ export default function DealerDashboard() {
             try {
                 await deleteDoc(doc(db, 'properties', id));
                 fetchMyProperties();
-            } catch (error) {
-                alert("Error deleting property");
+                toast.success('Listing deleted.');
+            } catch {
+                toast.error('The listing could not be deleted.');
             }
         }
     };
 
-    const localUser = JSON.parse(localStorage.getItem("housing_user") || "{}");
-    const isDealer = localUser.role === 'seller';
-
-    if (!isDealer) {
-        return (
-            <>
-                <Navbar />
-                <div style={{ padding: '10rem 2rem', textAlign: 'center' }}>
-                    <h2 style={{ color: 'var(--text)', fontFamily: 'Syne, sans-serif' }}>Dealer Access Only</h2>
-                    <p style={{ color: 'var(--text-3)', marginTop: '1rem' }}>Please upgrade your account to a Dealer role to access this panel.</p>
-                    <button className="btn-cta" style={{ marginTop: '2rem' }} onClick={() => navigate('/')}>Return Home</button>
-                </div>
-                <Footer />
-            </>
-        );
-    }
-
     return (
         <>
-            <Navbar />
             <div className="page-hero">
                 <div className="page-hero-inner">
                     <div className="page-hero-icon">🏢</div>
@@ -249,7 +232,7 @@ export default function DealerDashboard() {
                         ) : (
                             <div className="prop-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
                                 {(activeTab === 'my' ? properties : allProperties).map(prop => (
-                                    <div key={prop.id} className="prop-card" onClick={() => activeTab === 'all' && navigate(`/property-detail/${prop.id}`)} style={{ cursor: activeTab === 'all' ? 'pointer' : 'default' }}>
+                                    <div key={prop.id} className="prop-card" onClick={() => activeTab === 'all' && navigate(`/property/${prop.id}`)} style={{ cursor: activeTab === 'all' ? 'pointer' : 'default' }}>
                                         <div className="prop-card-img">
                                             <img src={prop.image || prop.img} alt={prop.title} />
                                             <div className={`prop-badge ${prop.status === 'for-sale' || prop.type === 'For Sale' ? 'for-sale' : 'for-rent'}`}>
@@ -315,7 +298,6 @@ export default function DealerDashboard() {
 
                 </div>
             </div>
-            <Footer />
         </>
     );
 }

@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import AIChat from '../components/AIChat';
 import api from '../api';
 import RoomUpload from '../components/interior/RoomUpload';
@@ -34,7 +32,6 @@ export default function InteriorDesign() {
 
     return (
         <>
-            <Navbar />
             <section className="page-hero">
                 <div className="page-hero-inner">
                     <div className="page-hero-icon">🎨</div>
@@ -88,7 +85,6 @@ export default function InteriorDesign() {
                     </div>
                 </div>
             </div>
-            <Footer />
         </>
     );
 }

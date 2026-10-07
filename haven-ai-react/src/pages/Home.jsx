@@ -1,7 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 
 export default function Home() {
     const navigate = useNavigate();
@@ -20,7 +18,6 @@ export default function Home() {
 
     return (
         <>
-            <Navbar />
 
             {/* ── HERO ── */}
             <section id="hero">
@@ -36,10 +33,10 @@ export default function Home() {
                     </div>
                     <div className="hero-stats">
                         {[
-                            { num: '5', suffix: '+', label: 'AI Modules' },
-                            { num: '10k', suffix: '+', label: 'Designs Created' },
-                            { num: '98', suffix: '%', label: 'Satisfaction Rate' },
-                            { num: '2', suffix: 'min', label: 'Avg. AI Response' },
+                            { num: '5', suffix: '', label: 'AI Modules' },
+                            { num: '2D', suffix: '→3D', label: 'Plan to Model' },
+                            { num: '150', suffix: '', label: 'Object Classes Recognised' },
+                            { num: '0', suffix: '₨', label: 'Free to Use' },
                         ].map((s, i) => (
                             <div key={i} className="hero-stat">
                                 <div className="hero-stat-num">{s.num}<span>{s.suffix}</span></div>
@@ -143,21 +140,21 @@ export default function Home() {
                     <div className="audience-header">
                         <div className="sec-label">For Everyone</div>
                         <h2 className="sec-title">Built for every housing need</h2>
-                        <p className="sec-sub" style={{ margin: '0 auto' }}>Whether you're building, buying, designing, or selling — Housing.AI has a tool for you.</p>
+                        <p className="sec-sub" style={{ margin: '0 auto' }}>Whether you're building, buying, designing, or selling — Haven.AI has a tool for you.</p>
                     </div>
                     <div className="audience-grid">
                         {[
-                            { emoji: '🏠', role: 'Homeowners', title: 'Design your dream home', desc: 'Plan renovations, visualize interiors, and estimate costs before committing to any project.', stat: 'Users save an average of <strong>30% on renovation costs</strong> by planning ahead.' },
-                            { emoji: '🏗️', role: 'Architects & Designers', title: 'Speed up your workflow', desc: 'Generate draft floor plans and 3D concepts in minutes. Share with clients instantly and iterate faster.', stat: 'Designers report <strong>2× faster project delivery</strong> using AI drafts.' },
-                            { emoji: '🔑', role: 'Property Buyers', title: 'Find the right property', desc: 'Browse curated listings, filter by your exact needs, and contact verified sellers directly from the platform.', stat: 'Buyers close deals <strong>40% faster</strong> with direct seller contact.' },
-                            { emoji: '📋', role: 'Property Sellers', title: 'Reach more buyers', desc: 'List your property for free and get immediate exposure to thousands of qualified, active buyers on the platform.', stat: 'Listings get <strong>3× more inquiries</strong> than traditional listings.' },
+                            { emoji: '🏠', role: 'Homeowners', title: 'Design your dream home', desc: 'Plan renovations, visualize interiors, and estimate costs before committing to any project.', stat: <>See <strong>colours, materials and furniture</strong> in your own room before you buy.</> },
+                            { emoji: '🏗️', role: 'Architects & Designers', title: 'Speed up your workflow', desc: 'Generate draft floor plans and 3D concepts in minutes. Share with clients instantly and iterate faster.', stat: <>Every plan is <strong>checked for overlaps and fit</strong> before it is shown.</> },
+                            { emoji: '🔑', role: 'Property Buyers', title: 'Find the right property', desc: 'Browse curated listings, filter by your exact needs, and contact verified sellers directly from the platform.', stat: <>Message the <strong>dealer directly</strong> from any listing.</> },
+                            { emoji: '📋', role: 'Property Sellers', title: 'Reach more buyers', desc: 'List your property for free, track its views, and answer buyer enquiries from one dashboard.', stat: <>Listings are <strong>reviewed and verified</strong> by our team.</> },
                         ].map((card, i) => (
                             <div key={i} className="audience-card reveal" ref={addReveal}>
                                 <div className="audience-emoji">{card.emoji}</div>
                                 <div className="role">{card.role}</div>
                                 <h3>{card.title}</h3>
                                 <p>{card.desc}</p>
-                                <div className="audience-stat" dangerouslySetInnerHTML={{ __html: card.stat }} />
+                                <div className="audience-stat">{card.stat}</div>
                             </div>
                         ))}
                     </div>
@@ -168,10 +165,10 @@ export default function Home() {
             <section id="stats">
                 <div className="stats-inner">
                     {[
-                        { num: '10k', accent: '+', desc: 'AI designs generated to date' },
-                        { num: '4.8', accent: '★', desc: 'Average user satisfaction rating' },
-                        { num: '2', accent: 'min', desc: 'Average time to first AI response' },
-                        { num: '5', accent: '+', desc: 'Specialized AI modules available' },
+                        { num: '5', accent: '', desc: 'Specialised AI modules in one assistant' },
+                        { num: '2', accent: ' floors', desc: 'Validated floor plans for up to two storeys' },
+                        { num: '100', accent: '%', desc: 'Room analysis runs on our own server — no photo sent to third parties' },
+                        { num: '24', accent: '/7', desc: 'AI assistant available on every page' },
                     ].map((s, i) => (
                         <div key={i} className="stat-item reveal" ref={addReveal}>
                             <div className="stat-num">{s.num}<span className="accent">{s.accent}</span></div>
@@ -185,14 +182,14 @@ export default function Home() {
             <section id="testimonials">
                 <div className="section-inner">
                     <div className="testimonials-header">
-                        <div className="sec-label">Testimonials</div>
-                        <h2 className="sec-title">What our users say</h2>
+                        <div className="sec-label">How it works</div>
+                        <h2 className="sec-title">From an idea to a home in three steps</h2>
                     </div>
                     <div className="testimonials-grid">
                         {[
-                            { stars: '★★★★★', quote: '"I described my apartment layout in plain English and got a detailed floor plan in under two minutes. This completely changed how I approach renovation planning."', avatar: '👩', name: 'Sarah K.', role: 'Homeowner, Austin TX' },
-                            { stars: '★★★★★', quote: '"The cost estimation tool saved me from massive budget overruns. I got a detailed itemized breakdown before even meeting a contractor — and the AI estimate was within 8% of the final quote."', avatar: '👨', name: 'David M.', role: 'Property Developer, Chicago' },
-                            { stars: '★★★★★', quote: '"I sold my apartment in 3 weeks after listing on Housing.AI. The direct contact feature brought in serious buyers only. I\'d never list anywhere else again."', avatar: '👩‍💼', name: 'Layla R.', role: 'Property Seller, New York' },
+                            { stars: 'Step 1', quote: 'Describe your plot and the rooms you need in plain language — for example "5 marla, 3 bedrooms, open kitchen".', avatar: '✍️', name: 'Describe', role: '2D Design' },
+                            { stars: 'Step 2', quote: 'Get a floor plan that is checked automatically, then turn it into an interactive 3D model you can walk around.', avatar: '🏛️', name: 'Visualise', role: '2D → 3D Design' },
+                            { stars: 'Step 3', quote: 'Upload a photo of a room to restyle it, compare listings, and contact dealers directly when you are ready.', avatar: '🔑', name: 'Decide', role: 'Interior Design & Properties' },
                         ].map((t, i) => (
                             <div key={i} className="testi-card reveal" ref={addReveal}>
                                 <div className="testi-stars">{t.stars}</div>
@@ -215,7 +212,7 @@ export default function Home() {
                 <div className="cta-box">
                     <div className="sec-label" style={{ textAlign: 'center' }}>Get Started Today</div>
                     <h2>Your dream home starts here.</h2>
-                    <p>Join thousands of homeowners, designers, and property seekers already using Housing.AI to design smarter and find faster.</p>
+                    <p>Plan, visualise and find your next home with Haven.AI — free to start, no credit card needed.</p>
                     <div className="cta-actions">
                         <button className="btn-hero" onClick={() => navigate('/signup?tab=signup')}>Start for Free →</button>
                         <a href="#solutions" className="btn-hero-ghost">Explore All Tools</a>
@@ -223,7 +220,6 @@ export default function Home() {
                 </div>
             </section>
 
-            <Footer />
         </>
     );
 }

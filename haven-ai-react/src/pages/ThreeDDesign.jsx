@@ -1,7 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import api from '../api';
 import ReferenceAnalysis from '../components/ReferenceAnalysis';
 import FloorPlanViewer from '../components/FloorPlanViewer';
@@ -265,7 +263,6 @@ export default function ThreeDDesign() {
 
     return (
         <>
-            <Navbar />
             <section className="page-hero">
                 <div className="page-hero-inner">
                     <div className="page-hero-icon">🏛️</div>
@@ -604,7 +601,6 @@ export default function ThreeDDesign() {
 
                 {result?.reference && <ReferenceAnalysis result={result} photoUrl={photoUrl} />}
             </div>
-            <Footer />
         </>
     );
 }

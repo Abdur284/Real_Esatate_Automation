@@ -1,10 +1,11 @@
 import logging
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
+from app.core.ratelimit import rate_limit
 from app.services.design3d import model_store
 from app.services.design3d.from_plan2d import generate_3d_from_plan2d
 from app.services.design3d.gltf_export import export_glb
@@ -49,7 +50,7 @@ class ModelRequest(BaseModel):
     storeys: Optional[int] = None
 
 
-@router.post("/generate")
+@router.post("/generate", dependencies=[Depends(rate_limit("design3d"))])
 async def generate(req: ModelRequest):
     """
     Generates a validated 3D building model from a natural-language brief
@@ -68,15 +69,16 @@ async def generate(req: ModelRequest):
             plot_length_ft=req.plot_length_ft,
             storeys=req.storeys,
         ))
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"3D model generation error: {exc}")
+    except Exception:
+        logger.exception("3D model generation failed")
+        raise HTTPException(status_code=500, detail="The 3D model could not be generated. Please try again.")
 
 
 class FromPlan2DRequest(BaseModel):
     plan: Dict[str, Any]
 
 
-@router.post("/from-2d")
+@router.post("/from-2d", dependencies=[Depends(rate_limit("design3d"))])
 async def from_2d(req: FromPlan2DRequest):
     """
     Builds a 3D model from a structured floor plan -- one returned by
@@ -86,11 +88,13 @@ async def from_2d(req: FromPlan2DRequest):
     """
     try:
         return _with_glb(generate_3d_from_plan2d(req.plan))
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"2D to 3D conversion error: {exc}")
+    except Exception:
+        logger.exception("2D to 3D conversion failed")
+        raise HTTPException(status_code=500, detail="This floor plan could not be converted to 3D. "
+                                                    "Please check it and try again.")
 
 
-@router.post("/generate-from-image")
+@router.post("/generate-from-image", dependencies=[Depends(rate_limit("design3d"))])
 async def generate_from_image(
     image: UploadFile = File(...),
     prompt: str = Form(""),
@@ -136,11 +140,13 @@ async def generate_from_image(
         raise HTTPException(status_code=415, detail=str(exc))
     except GeminiUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc))
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Image-based 3D generation error: {exc}")
+    except Exception:
+        logger.exception("Image-based 3D generation failed")
+        raise HTTPException(status_code=500, detail="The 3D design could not be created from this photo. "
+                                                    "Please try again.")
 
 
-@router.post("/analyze")
+@router.post("/analyze", dependencies=[Depends(rate_limit("design3d"))])
 async def analyze(
     image: UploadFile = File(...),
     width_ft: Optional[float] = Form(None),

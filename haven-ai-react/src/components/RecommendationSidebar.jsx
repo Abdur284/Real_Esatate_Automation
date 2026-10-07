@@ -44,10 +44,7 @@ export default function RecommendationSidebar() {
         return () => window.removeEventListener('ai-recommendation-update', handleAIUpdate);
     }, []);
 
-    const openProperty = (p) => {
-        sessionStorage.setItem('hs_property', JSON.stringify(p));
-        navigate('/property-detail');
-    };
+    const openProperty = (p) => navigate(`/property/${p.id}`);
 
     return (
         <aside className="sidebar-recommendations" style={{ 

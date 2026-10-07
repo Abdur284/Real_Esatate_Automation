@@ -1,37 +1,80 @@
 # Haven AI Backend
 
-This is the FastAPI backend for the Haven AI project.
+FastAPI backend for Haven.AI: the ArchiBot chatbot, 2D floor-plan generation,
+3D model generation, interior design editing and the admin API.
 
-## Project Structure
+## Project structure
 
-- `app/main.py`: Entry point for the FastAPI application.
-- `app/api/`: Contains the API endpoints.
-- `app/core/`: Contains the core configuration and security settings.
-- `app/models/`: Place for your ML/AI models and data models.
-- `requirements.txt`: Python dependencies.
+```
+app/
+  main.py                 FastAPI app, CORS, routers
+  core/
+    config.py             settings from .env (see .env.example)
+    firebase.py           the single Firebase Admin app + Firestore client
+    auth.py               Firebase ID-token checks: optional_user, require_user, require_admin
+    ratelimit.py          per-user/IP request limits on expensive endpoints
+  api/endpoints/          chat, design_2d, design_3d, interior, admin
+  services/
+    chat/                 chatbot: routing.py, modules.py, templates.py, cache.py, orchestrator.py
+    gemini.py             shared Gemini client with model fallbacks
+    design2d/ design3d/   plan and model generators
+    plan_vision/          floor-plan image analysis (OpenCV)
+    interior/             room segmentation, scene editing, renderer, object library
+    admin.py              admin dashboard data access (Firestore)
+scripts/
+  set_admin.py            grant / revoke administrator access
+  fetch_interior_assets.py
+tests/                    pytest suite
+```
 
-## Getting Started
+## Getting started
 
-### 1. Create a Virtual Environment
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-### 2. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Run the Backend
-```bash
+venv\Scripts\activate          # macOS/Linux: source venv/bin/activate
+pip install -r requirements-dev.txt
+copy .env.example .env            # macOS/Linux: cp .env.example .env  — then fill it in
 uvicorn app.main:app --reload
 ```
-The API will be available at `http://localhost:8000`.
-You can access the interactive API documentation at `http://localhost:8000/docs`.
 
-### 4. ML/AI Integration
-Add your model loading logic in `app/models/` and utilize them in `app/api/endpoints/`.
+The API runs on `http://localhost:8000`; interactive docs at `/docs`.
+
+### Secrets
+
+* `.env` — Gemini key and settings. Template: `.env.example`.
+* `firebase-credentials.json` — Firebase **service-account** key (Firebase
+  console → Project settings → Service accounts → Generate new private key).
+
+Both are listed in the repository's `.gitignore` and must never be committed.
+If a key was ever shared or committed, revoke it and generate a new one.
+
+## Security model
+
+| Concern | How it is handled |
+|---|---|
+| Who is calling | The frontend signs in with Firebase Auth and sends `Authorization: Bearer <ID token>`; `app/core/auth.py` verifies it. |
+| Administrators | Firebase custom claim `admin: true`, granted only with the service account: `python scripts/set_admin.py you@example.com` (sign out and in again afterwards). Every `/api/admin/*` route requires it. |
+| Direct Firestore access from the browser | Restricted by `/firestore.rules` (deploy with `firebase deploy --only firestore:rules` from the repository root). |
+| AI chat sessions | Signed-in users are keyed by their verified uid; guests by a random id their browser generated — never by a user id sent in the body. |
+| Abuse / quota | `RATE_LIMIT_PER_MINUTE` (default 20) per user or IP on chat, 2D/3D generation and interior uploads/renders. |
+| Errors | Clients get a generic message; details go to the server log. |
+
+## API overview
+
+| Prefix | Purpose |
+|---|---|
+| `POST /api/chat/send` | ArchiBot chatbot (routes to the modules below) |
+| `POST /api/design/2d/generate` | 2D floor plan from a brief (Gemini + deterministic validation) |
+| `/api/design/3d/...` | 3D model from a brief, a 2D plan, a plan image or a property photo |
+| `/api/interior/...` | Room photo → editable scene, object library, saved designs |
+| `/api/admin/...` | Admin dashboard (admin claim required) |
+
+## Tests
+
+```bash
+python -m pytest              # whole suite (about 4 minutes; the interior model tests need the ONNX model)
+python -m pytest tests/test_security.py tests/test_chat.py
+```
 
 ## Interior Design module (`/api/interior`)
 
@@ -124,6 +167,10 @@ Previews are rendered by the room renderer on first request (all of them are
 pre-rendered in the background when the library is first opened) and cached
 in `INTERIOR_STORAGE_DIR/thumbs`. Search, filters, facets, sorting and
 pagination run on the server (`/api/interior/library/...`).
+
+**Licence note.** The SegFormer-B2 weights are released by NVIDIA for
+research / non-commercial use only. That is fine for this academic project;
+swap them for a commercially licensed model before any commercial deployment.
 
 **Saved designs** are Firestore documents in `interior_designs`, written by
 the backend after verifying the user's Firebase ID token

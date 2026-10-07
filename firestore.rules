@@ -1,0 +1,99 @@
+rules_version = '2';
+
+// Haven.AI Firestore security rules.
+//
+// The browser talks to Firestore directly for profiles, listings and
+// buyer↔dealer chats; these rules are what actually protects that data.
+// Collections only the backend uses (chat_sessions, interior_designs) are
+// closed here: the backend's Admin SDK is not subject to rules.
+//
+// Deploy:  firebase deploy --only firestore:rules
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function profile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function isSeller() { return signedIn() && profile().role == 'seller'; }
+    function shortString(v, max) { return v is string && v.size() <= max; }
+
+    // ── User profiles: private to their owner (they hold CNIC and mobile).
+    // The role is chosen at sign-up and cannot be changed by the user later.
+    match /users/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow create: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(['name', 'cnic', 'mobile', 'email', 'role', 'createdAt'])
+        && request.resource.data.role in ['buyer', 'seller']
+        && shortString(request.resource.data.name, 80);
+      allow update: if isSelf(uid)
+        && !changed().hasAny(['role', 'email', 'createdAt'])
+        && changed().hasOnly(['name', 'mobile', 'cnic']);
+      allow delete: if false;   // admins delete through the backend
+    }
+
+    // ── Property listings: public to read; dealers manage their own.
+    // `verified` is set only by admins (backend); `views` only ever goes up by one.
+    match /properties/{propertyId} {
+      allow read: if true;
+
+      allow create: if isSeller()
+        && request.resource.data.dealerId == request.auth.uid
+        && request.resource.data.get('verified', false) == false
+        && request.resource.data.get('views', 0) == 0
+        && shortString(request.resource.data.title, 150)
+        && request.resource.data.price is number && request.resource.data.price >= 0;
+
+      allow update: if
+        // the owner edits the listing, but not its owner, verification or counters
+        (signedIn() && resource.data.dealerId == request.auth.uid
+          && !changed().hasAny(['dealerId', 'verified', 'views', 'createdAt']))
+        // anyone (also guests) records one view
+        || (changed().hasOnly(['views'])
+          && request.resource.data.views == resource.data.get('views', 0) + 1);
+
+      allow delete: if signedIn() && resource.data.dealerId == request.auth.uid;
+    }
+
+    // ── Buyer ↔ dealer conversations, id = buyerId_dealerId_propertyId.
+    // Only the two participants can read or write; the dealer must be the
+    // listing's real dealer.
+    match /chats/{chatId} {
+      function participant(data) {
+        return signedIn() && (request.auth.uid == data.buyerId || request.auth.uid == data.dealerId);
+      }
+
+      allow read: if participant(resource.data);
+
+      allow create: if signedIn()
+        && request.resource.data.buyerId == request.auth.uid
+        && request.resource.data.dealerId != request.auth.uid
+        && chatId == request.resource.data.buyerId + '_' + request.resource.data.dealerId + '_' + request.resource.data.propertyId
+        && get(/databases/$(database)/documents/properties/$(request.resource.data.propertyId)).data.dealerId
+             == request.resource.data.dealerId;
+
+      allow update: if participant(resource.data)
+        && changed().hasOnly(['lastMessage', 'lastMessageAt', 'unreadBuyer', 'unreadDealer']);
+
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        function chat() { return get(/databases/$(database)/documents/chats/$(chatId)).data; }
+
+        allow read: if participant(chat());
+        allow create: if participant(chat())
+          && request.resource.data.senderId == request.auth.uid
+          && shortString(request.resource.data.text, 2000)
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+
+    // ── Backend-only collections (AI chat history, saved interior designs)
+    // and the retired `conversations` collection.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

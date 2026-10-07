@@ -1,5 +1,3 @@
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import AIChat from '../components/AIChat';
 import FloorPlanGenerator from '../components/FloorPlanGenerator';
 import { useEffect, useRef } from 'react';
@@ -23,7 +21,6 @@ export default function TwoDDesign() {
 
     return (
         <>
-            <Navbar />
 
             {/* TOOL HERO */}
             <section style={{
@@ -174,7 +171,6 @@ export default function TwoDDesign() {
                 </div>
             </section>
 
-            <Footer />
         </>
     );
 }

@@ -1,97 +1,78 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { db, auth } from '../firebase';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { db } from '../firebase';
 import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+import { useAuth } from '../auth/AuthContext';
+import { useToast } from '../components/Toast';
+
+/** A view is counted once per property per browser session, not on every reload. */
+function shouldCountView(id) {
+    try {
+        const key = `haven_viewed_${id}`;
+        if (sessionStorage.getItem(key)) return false;
+        sessionStorage.setItem(key, '1');
+        return true;
+    } catch {
+        return false;
+    }
+}
 
 export default function PropertyDetail() {
     const navigate = useNavigate();
+    const toast = useToast();
+    const { user } = useAuth();
     const { id } = useParams();
     const [property, setProperty] = useState(null);
     const [activeImg, setActiveImg] = useState(0);
     const [loading, setLoading] = useState(true);
-    const [successModal, setSuccessModal] = useState(false);
-    const [message, setMessage] = useState('');
+    const [notFound, setNotFound] = useState(false);
 
     useEffect(() => {
-        const fetchAndTrack = async () => {
-            let pData = null;
-
-            if (id) {
-                // Fetch from Firestore directly if ID in URL
-                if (id.startsWith('mock-')) {
-                    // Handle Sample Data
-                    pData = {
-                        id: id,
-                        title: id === 'mock-p1' ? "Luxury Villa in Gulberg" : "Modern Apartment in DHA",
-                        price: id === 'mock-p1' ? 45000000 : 15000000,
-                        location: id === 'mock-p1' ? "Gulberg, Lahore" : "DHA Phase 6, Lahore",
-                        area: "10 Marla",
-                        img: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80"
-                    };
-                } else {
-                    try {
-                        const docRef = doc(db, 'properties', id);
-                        const docSnap = await getDoc(docRef);
-                        if (docSnap.exists()) {
-                            pData = { id: docSnap.id, ...docSnap.data() };
-                        }
-                    } catch (e) {
-                        console.error("Error fetching property:", e);
-                    }
+        let alive = true;
+        setLoading(true);
+        setNotFound(false);
+        (async () => {
+            try {
+                const snap = await getDoc(doc(db, 'properties', id));
+                if (!alive) return;
+                if (!snap.exists()) {
+                    setNotFound(true);
+                    return;
                 }
-            } else {
-                // Fallback to sessionStorage
-                const raw = sessionStorage.getItem('hs_property');
-                if (raw) pData = JSON.parse(raw);
-            }
-
-            if (pData) {
-                setProperty(pData);
-                setLoading(false);
-
-                // Increment Views in Firestore
-                if (pData.id) {
-                    try {
-                        const propRef = doc(db, 'properties', String(pData.id));
-                        await updateDoc(propRef, {
-                            views: increment(1)
-                        });
-                    } catch (e) {
-                        console.error("View tracking failed", e);
-                    }
+                const data = snap.data();
+                setProperty({ id: snap.id, ...data, img: data.image || data.img });
+                if (shouldCountView(snap.id)) {
+                    updateDoc(snap.ref, { views: increment(1) }).catch(() => { /* counting is best effort */ });
                 }
-            } else {
-                navigate('/properties');
+            } catch {
+                if (alive) setNotFound(true);
+            } finally {
+                if (alive) setLoading(false);
             }
-        };
-        fetchAndTrack();
-    }, [id, navigate]);
+        })();
+        return () => { alive = false; };
+    }, [id]);
 
     const handleContact = () => {
-        const user = auth.currentUser;
-        if (!user) {
-            navigate('/signup?tab=signup');
-            return;
-        }
-        navigate(`/chat?dealerId=${property.dealerId}&propertyId=${property.id}&propertyTitle=${encodeURIComponent(property.title)}`);
+        const target = `/chat?propertyId=${encodeURIComponent(property.id)}`;
+        navigate(user ? target : `/signup?tab=login&next=${encodeURIComponent(target)}`);
     };
 
-    const sendMessage_ = () => {
-        if (!message.trim()) return;
-        setSuccessModal(true);
-        setMessage('');
-    };
+    if (notFound) return (
+        <div className="page-content" style={{ padding: '8rem 2rem', textAlign: 'center' }}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🏚️</div>
+            <h2 style={{ fontFamily: 'Syne, sans-serif' }}>Listing not found</h2>
+            <p style={{ color: 'var(--text-3)', margin: '1rem 0 2rem' }}>This property may have been removed by its dealer.</p>
+            <Link to="/properties" className="btn-cta">Browse all properties</Link>
+        </div>
+    );
 
     if (loading || !property) return (
         <>
-            <Navbar />
             <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ fontSize: '2rem' }}>🏠</div>
                 <p style={{ color: 'var(--text-2)' }}>Loading property...</p>
             </div>
-            <Footer />
         </>
     );
 
@@ -105,7 +86,6 @@ export default function PropertyDetail() {
 
     return (
         <>
-            <Navbar />
             <div style={{ maxWidth: 'var(--max)', margin: '1.5rem auto', padding: '0 2rem', paddingTop: 'calc(var(--nav-h) + 1rem)' }}>
                 <a onClick={() => navigate('/properties')} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-3)', fontSize: '0.875rem', cursor: 'pointer', fontWeight: 500, transition: 'color 0.2s' }}>
                     ← Back to Listings
@@ -170,7 +150,7 @@ export default function PropertyDetail() {
                             )}
 
                             <div
-                                onClick={() => property.mapUrl ? window.open(property.mapUrl, '_blank') : alert("Please contact the dealer for the exact coordinates.")}
+                                onClick={() => property.mapUrl ? window.open(property.mapUrl, '_blank') : toast.show('Please contact the dealer for the exact location.')}
                                 style={{
                                     width: '100%',
                                     height: '220px',
@@ -247,9 +227,9 @@ export default function PropertyDetail() {
                         <p style={{ fontSize: '0.82rem', color: 'var(--text-2)', marginBottom: '1.25rem' }}>Contact the seller directly to ask questions or arrange a viewing.</p>
                         <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '10px', padding: '1.1rem', textAlign: 'center', marginBottom: '0.75rem' }}>
                             <p style={{ fontSize: '0.82rem', color: 'var(--text-2)', marginBottom: '0.6rem', lineHeight: 1.5 }}>
-                                {auth.currentUser ? 'Chat with the dealer directly to get more details or ask questions.' : '🔒 Login required to contact the seller.'}
+                                {user ? 'Chat with the dealer directly to get more details or ask questions.' : '🔒 Login required to contact the seller.'}
                             </p>
-                            {!auth.currentUser && (
+                            {!user && (
                                 <a onClick={() => navigate('/signup?tab=login')} style={{ color: 'var(--accent)', fontWeight: 600, cursor: 'pointer' }}>Login now →</a>
                             )}
                         </div>
@@ -274,20 +254,7 @@ export default function PropertyDetail() {
                 </div>
             </div>
 
-            {/* Success Modal */}
-            {successModal && (
-                <div className="modal-overlay" onClick={() => setSuccessModal(false)}>
-                    <div className="modal-content" style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                        <button className="close-btn" onClick={() => setSuccessModal(false)}>×</button>
-                        <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>✅</div>
-                        <h2 style={{ marginBottom: '0.5rem' }}>Message Sent!</h2>
-                        <p style={{ fontSize: '0.875rem', color: 'var(--text-2)', marginBottom: '1.5rem' }}>Your message was sent to {property.seller?.name || property.dealerName}. Expect a reply within 24 hours.</p>
-                        <button className="modal-submit" onClick={() => setSuccessModal(false)}>Done</button>
-                    </div>
-                </div>
-            )}
 
-            <Footer />
         </>
     );
 }
