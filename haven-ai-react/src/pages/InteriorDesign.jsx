@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import AIChat from '../components/AIChat';
 import api from '../api';
 import RoomUpload from '../components/interior/RoomUpload';
 import RoomEditor from '../components/interior/RoomEditor';
@@ -55,15 +54,6 @@ export default function InteriorDesign() {
             </div>
 
             <div className="page-content">
-                <AIChat
-                    title="Interior Design AI"
-                    icon="🎨"
-                    welcomeText="Need ideas first? Tell me about your space, style preferences, and budget — I'll suggest a complete concept with colors, furniture, lighting, and décor."
-                    placeholder="e.g. Scandinavian living room, 20 sqm, neutral tones, cozy and minimalist feel, medium budget..."
-                    chips={['Scandinavian living room', 'Luxury master bedroom', 'Industrial kitchen design', 'Small apartment makeover']}
-                    systemContext="You are a world-class interior design AI consultant with expertise across all styles — modern, minimalist, Scandinavian, bohemian, industrial, traditional, Art Deco, and more. When given a design brief, provide: a complete color palette with hex codes, furniture recommendations with approximate price points, flooring and wall treatment ideas, lighting design (ambient, task, accent), textile and soft furnishing suggestions, art and décor recommendations, and a room layout strategy. Be specific, inspiring, and practical."
-                />
-
                 <div className="info-panel">
                     <div className="info-card">
                         <div className="info-card-icon">

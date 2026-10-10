@@ -49,6 +49,23 @@ class Settings(BaseSettings):
     INTERIOR_ASSET_DIR: str = "assets/interior"
     FIREBASE_CREDS_PATH: str = "firebase-credentials.json"
 
+    # Forgotten-password codes are emailed over SMTP (e.g. Gmail: smtp.gmail.com,
+    # port 587, your address and an App Password). RESET_CODE_LOG_ONLY=true
+    # writes the code to the server log instead, for local testing only.
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+    RESET_CODE_LOG_ONLY: bool = False
+
+    # Zameen.com listings on the Properties page (app/services/zameen.py).
+    # Empty = off, MOCK = labelled sample listings, else the API base URL.
+    ZAMEEN_API_URL: str = ""
+    ZAMEEN_API_KEY: str = ""
+    ZAMEEN_TIMEOUT_SECONDS: float = 10.0
+    ZAMEEN_CACHE_SECONDS: int = 600
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def _split_origins(cls, value):

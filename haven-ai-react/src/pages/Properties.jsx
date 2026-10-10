@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { useAuth } from '../auth/AuthContext';
 import { collection, getDocs } from 'firebase/firestore';
+import api from '../api';
+
+const PLACEHOLDER_IMG = 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&q=80';
+const isZameen = (p) => p.source === 'zameen';
 
 export default function Properties() {
     const navigate = useNavigate();
@@ -14,6 +18,8 @@ export default function Properties() {
     const [filterStatus, setFilterStatus] = useState('');
     const [filterBeds, setFilterBeds] = useState('');
     const [activeTab, setActiveTab] = useState('all');
+    const [zameenNote, setZameenNote] = useState('');
+    const [zameenListings, setZameenListings] = useState([]);
     useEffect(() => {
         const fetchProperties = async () => {
             setLoading(true);
@@ -69,9 +75,28 @@ export default function Properties() {
             }
         };
         fetchProperties();
+
+        // Zameen.com listings come through our backend and are added after
+        // our own; if Zameen is off or down the page simply shows ours.
+        let alive = true;
+        api.properties.external()
+            .then(res => {
+                if (!alive) return;
+                if (res.error) setZameenNote(res.error);
+                const extra = (res.listings || []).map(z => ({
+                    ...z,
+                    img: z.img || PLACEHOLDER_IMG,
+                    imgs: [z.img || PLACEHOLDER_IMG],
+                    seller: { name: z.agency || 'Zameen.com', tag: 'Zameen.com listing', avatar: '🏢' },
+                }));
+                setZameenListings(extra);
+            })
+            .catch(() => { /* backend unreachable: our own listings still show */ });
+        return () => { alive = false; };
     }, []);
 
-    const filtered = properties.filter(p => {
+    const allListings = [...properties, ...zameenListings];
+    const filtered = allListings.filter(p => {
         if (searchQ && !p.title.toLowerCase().includes(searchQ.toLowerCase()) && !p.location.toLowerCase().includes(searchQ.toLowerCase())) return false;
 
         const pType = (p.type || '').toLowerCase();
@@ -91,7 +116,8 @@ export default function Properties() {
         return true;
     });
 
-    const openProperty = (p) => navigate(`/property/${p.id}`);
+    const openZameen = (p) => { if (p.url) window.open(p.url, '_blank', 'noopener,noreferrer'); };
+    const openProperty = (p) => (isZameen(p) ? openZameen(p) : navigate(`/property/${p.id}`));
 
     const contactAndRedirect = (e, p) => {
         e.stopPropagation();
@@ -111,8 +137,8 @@ export default function Properties() {
                                 <p>Browse verified properties, contact sellers directly, and list your own — all in one place.</p>
                             </div>
                             <div style={{ background: 'rgba(255,255,255,0.1)', padding: '1rem 1.5rem', borderRadius: '16px', backdropFilter: 'blur(10px)', textAlign: 'center', border: '1px solid rgba(255,255,255,0.2)' }}>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{properties.length}</div>
-                                <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '0.2rem', opacity: 0.8 }}>Total in DB</div>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff' }}>{allListings.length}</div>
+                                <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '0.2rem', opacity: 0.8 }}>Listings</div>
                             </div>
                         </div>
                     </div>
@@ -158,6 +184,10 @@ export default function Properties() {
                             ))}
                         </div>
 
+                        {zameenNote && (
+                            <p role="status" style={{ fontSize: '0.8rem', color: 'var(--text-3)', margin: '0 0 1rem' }}>{zameenNote} Showing Haven.AI listings only.</p>
+                        )}
+
                         {/* Loading State */}
                         {loading ? (
                             <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-3)' }}>
@@ -185,6 +215,11 @@ export default function Properties() {
                                         <span className={`prop-badge ${p.status}`} style={{ position: 'absolute', top: '1rem', left: '1rem', padding: '0.4rem 0.8rem', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', background: p.status === 'for-sale' ? 'var(--accent)' : 'var(--green)', color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
                                             {p.status === 'for-sale' ? 'For Sale' : 'For Rent'}
                                         </span>
+                                        {isZameen(p) && (
+                                            <span style={{ position: 'absolute', top: '1rem', right: '1rem', padding: '0.4rem 0.8rem', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 800, background: '#fff', color: '#0b7d3e', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+                                                Zameen.com
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="prop-card-body" style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
@@ -211,12 +246,23 @@ export default function Properties() {
                                             <div style={{ fontSize: '0.8rem', color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}>📐 {p.area}</div>
                                         </div>
                                         
+                                        {isZameen(p) ? (
+                                            <button
+                                                disabled={!p.url}
+                                                title={p.url ? 'Opens the listing on Zameen.com' : 'Sample listing: no Zameen.com page'}
+                                                style={{ marginTop: '1rem', width: '100%', padding: '0.8rem', background: '#0b7d3e', border: 'none', borderRadius: '12px', color: '#fff', fontFamily: 'Inter, sans-serif', fontSize: '0.85rem', fontWeight: 700, cursor: p.url ? 'pointer' : 'not-allowed', opacity: p.url ? 1 : 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                                                onClick={e => { e.stopPropagation(); openZameen(p); }}
+                                            >
+                                                View on Zameen.com ↗
+                                            </button>
+                                        ) : (
                                         <button 
                                             style={{ marginTop: '1rem', width: '100%', padding: '0.8rem', background: 'var(--accent)', border: 'none', borderRadius: '12px', color: '#fff', fontFamily: 'Inter, sans-serif', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', boxShadow: '0 4px 15px rgba(59,130,246,0.2)' }} 
                                             onClick={e => contactAndRedirect(e, p)}
                                         >
                                             Contact Dealer
                                         </button>
+                                        )}
                                     </div>
                                 </div>
                                 ))}

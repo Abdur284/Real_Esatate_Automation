@@ -5,7 +5,7 @@ import process from 'node:process';
 import { describe, expect, it, beforeAll } from 'vitest';
 import { parseHouse } from './houseLoader';
 import {
-    FT_TO_M, applyVisibility, computeView, isShown, pickRoom, roomBounds, setWallsTransparent,
+    DEFAULT_FOV, FT_TO_M, INTERIOR_FOV, applyVisibility, computeView, isShown, pickRoom, roomBounds, setWallsTransparent,
 } from './viewerUtils';
 
 const fixture = (name) => {
@@ -154,6 +154,31 @@ describe('camera views', () => {
         const rooms = one.index.rooms.map((r) => r.userData);
         const v = computeView('interior', { meta: meta(), rooms });
         expect(v.room.label).toBe('Kitchen'); // 20 x 12 = 240 sq ft
+    });
+
+    it('looks into the interior with a wide lens from a corner, towards the opposite corner', () => {
+        const kitchen = one.index.rooms.find((r) => r.userData.label === 'Kitchen').userData;
+        const v = computeView('interior', { meta: meta(), room: kitchen });
+        expect(v.fov).toBe(INTERIOR_FOV);
+        const b = roomBounds(kitchen, meta());
+        // From the front-left corner the look direction points right and back.
+        expect(v.position[0]).toBeLessThan((b.min[0] + b.max[0]) / 2);
+        expect(v.position[2]).toBeGreaterThan((b.min[2] + b.max[2]) / 2);
+        expect(v.target[0]).toBeGreaterThan(v.position[0]);
+        expect(v.target[2]).toBeLessThan(v.position[2]);
+    });
+
+    it('frames a selected room from above with its surroundings, at the normal lens', () => {
+        const kitchen = one.index.rooms.find((r) => r.userData.label === 'Kitchen').userData;
+        const v = computeView('room', { meta: meta(), room: kitchen, aspect: 1.6 });
+        const b = roomBounds(kitchen, meta());
+        expect(v.fov).toBe(DEFAULT_FOV);
+        expect(v.target[0]).toBeCloseTo((b.min[0] + b.max[0]) / 2, 5);
+        expect(v.position[1]).toBeGreaterThan(b.max[1] + 3);    // above the walls, looking down
+        const dist = Math.hypot(...v.position.map((c, i) => c - v.target[i]));
+        expect(dist).toBeGreaterThan(8);                        // not pressed against the room
+        expect(dist).toBeLessThan(computeView('exterior', { meta: meta(), aspect: 1.6 }).position
+            .reduce((s, c, i) => s + (c - computeView('exterior', { meta: meta(), aspect: 1.6 }).target[i]) ** 2, 0) ** 0.5);
     });
 
     it('fit keeps the current viewing direction', () => {

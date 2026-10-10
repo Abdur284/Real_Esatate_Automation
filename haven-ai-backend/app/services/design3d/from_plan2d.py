@@ -342,7 +342,7 @@ def build_model_from_plan2d(plan: Dict[str, Any]) -> Dict[str, Any]:
             "plot_area_sqft": round(pw * pl, 1),
         },
     }
-    return {"model": model, "skipped_openings": skipped_openings}
+    return {"model": model, "skipped_openings": skipped_openings, "items": floors}
 
 
 def generate_3d_from_plan2d(plan: Dict[str, Any]) -> Dict[str, Any]:
@@ -368,6 +368,13 @@ def generate_3d_from_plan2d(plan: Dict[str, Any]) -> Dict[str, Any]:
 
     result = build_model_from_plan2d(plan)
     model = result["model"]
+    from .fidelity import check_reconstruction
+    validation = check_reconstruction(result["items"], model, result["skipped_openings"], _enclosed)
+    if not validation["passed"]:
+        failed = [c["detail"] for c in validation["checks"] if c["blocking"] and not c["ok"]]
+        return {"status": "NOT_FEASIBLE",
+                "message": "The 3D model did not match the 2D plan, so it was not shown: " + "; ".join(failed[:3]),
+                "validation": validation}
     thickness = model["wall_thickness_ft"]
     measured = model["source"] == "image_analysis" and (
         thickness["exterior"] != EXT_WALL_THICKNESS_FT or thickness["interior"] != INT_WALL_THICKNESS_FT)
@@ -398,4 +405,5 @@ def generate_3d_from_plan2d(plan: Dict[str, Any]) -> Dict[str, Any]:
         "plot": model["plot"],
         "model": model,
         "assumptions": assumptions,
+        "validation": validation,
     }

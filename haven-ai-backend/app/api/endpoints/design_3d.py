@@ -7,6 +7,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.core.ratelimit import rate_limit
 from app.services.design3d import model_store
+from app.services.design3d.fidelity import check_glb
 from app.services.design3d.from_plan2d import generate_3d_from_plan2d
 from app.services.design3d.gltf_export import export_glb
 from app.services.design3d.reference import (
@@ -33,6 +34,13 @@ def _with_glb(result: Dict[str, Any]) -> Dict[str, Any]:
         logger.exception("GLB export failed")
         result["glb_error"] = "The 3D model file could not be generated from this design."
         return result
+    if isinstance(result.get("validation"), dict):
+        glb_check = check_glb(result["model"], metadata)
+        result["validation"]["checks"].append(glb_check)
+        if not glb_check["ok"]:
+            result["validation"]["passed"] = False
+            result["glb_error"] = "The 3D model file did not contain every room of the design."
+            return result
     model_id = model_store.put(data)
     result["glb"] = {
         "model_url": f"/api/design/3d/models/{model_id}.glb",
@@ -41,6 +49,18 @@ def _with_glb(result: Dict[str, Any]) -> Dict[str, Any]:
         "metadata": metadata,
     }
     return result
+
+
+def _is_floor_plan(data: bytes) -> bool:
+    try:
+        from app.services.plan_vision.service import looks_like_floor_plan
+    except ImportError:  # OpenCV missing: the photo path works as before
+        return False
+    try:
+        return looks_like_floor_plan(data)
+    except Exception:
+        logger.exception("Floor-plan check failed")
+        return False
 
 
 class ModelRequest(BaseModel):
@@ -128,6 +148,16 @@ async def generate_from_image(
         raise HTTPException(status_code=422, detail="`storeys` must be 1 or 2.")
     data = await image.read(MAX_IMAGE_BYTES + 1)
     await image.close()
+    # A floor plan uploaded here would otherwise be used as a facade photo and
+    # a house would be built from the text brief instead of from the drawing.
+    if await run_in_threadpool(_is_floor_plan, data):
+        return {
+            "status": "FLOOR_PLAN_DETECTED",
+            "mode": "image",
+            "message": "This image is a 2D floor plan, not a photo of a building. Floor plans are "
+                       "reconstructed exactly (same rooms, walls, doors and windows) with "
+                       "\"Upload 2D design\" instead.",
+        }
     try:
         return _with_glb(await generate_3d_from_reference(
             image=data, prompt=prompt, plot_width_ft=plot_width_ft,

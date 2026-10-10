@@ -8,7 +8,8 @@ Layer 1 of the 2D -> 3D pipeline: understanding a 2D floor-plan image.
       -> segmentation  classical computer vision (OpenCV) in pixel space:
                        wall mask, wall thickness, rooms, door/window gaps,
                        stair hatching, room fill colours
-      -> structure     pixels -> feet using the dimensions the user gave,
+      -> text          OCR of room names and printed dimensions (optional)
+      -> structure     pixels -> feet using the printed or typed dimensions,
                        wall-centreline snapping, the 2D plan JSON schema
                        (the same schema the 2D Design module produces), with
                        every value tagged detected / explicit / inferred / missing

@@ -21,6 +21,24 @@ export default function Navbar() {
 
     const isActive = (path) => location.pathname === path ? 'active' : '';
 
+    // Dealers get a minimal bar: their name (back to the dashboard), Messages, Logout.
+    if (user && profile?.role === 'seller') {
+        return (
+            <header className={`main-header${scrolled ? ' scrolled' : ''}`}>
+                <nav className="main-nav">
+                    <Link to="/dealer-dashboard" className="logo">HAVEN<span>.</span>AI</Link>
+                    <div className="auth-btns">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginRight: '0.5rem' }}>
+                            <Link to="/dealer-dashboard" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)' }}>{profile?.name || 'Dealer'}</Link>
+                            <Link to="/chat" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-2)' }}>Messages</Link>
+                        </div>
+                        <button className="btn-ghost" onClick={handleLogout}>Logout</button>
+                    </div>
+                </nav>
+            </header>
+        );
+    }
+
     return (
         <header className={`main-header${scrolled ? ' scrolled' : ''}`}>
             <nav className="main-nav">

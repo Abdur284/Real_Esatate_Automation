@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { useAuth } from '../auth/AuthContext';
-import { useToast } from '../components/Toast';
 
 /** A view is counted once per property per browser session, not on every reload. */
 function shouldCountView(id) {
@@ -19,7 +18,6 @@ function shouldCountView(id) {
 
 export default function PropertyDetail() {
     const navigate = useNavigate();
-    const toast = useToast();
     const { user } = useAuth();
     const { id } = useParams();
     const [property, setProperty] = useState(null);
@@ -134,50 +132,6 @@ export default function PropertyDetail() {
                         >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
                             {property.location} {property.mapUrl && <span style={{ fontSize: '0.75rem', marginLeft: '0.5rem', textDecoration: 'underline' }}>(View on Google Maps)</span>}
-                        </div>
-
-                        <div style={{ marginBottom: '2.5rem', background: 'var(--bg-2)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                            <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text)', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                📍 Location & Map Area
-                            </h4>
-                            
-                            {/* NEW: Display Map Image / Plot Plan if it exists */}
-                            {property.mapImage && (
-                                <div style={{ marginBottom: '1.5rem', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
-                                    <div style={{ padding: '0.6rem 1rem', background: 'var(--accent)', color: '#fff', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>Society Map / Plot Plan</div>
-                                    <img src={property.mapImage} alt="Plot Plan" style={{ width: '100%', maxHeight: '400px', objectFit: 'contain', background: '#fff' }} />
-                                </div>
-                            )}
-
-                            <div
-                                onClick={() => property.mapUrl ? window.open(property.mapUrl, '_blank') : toast.show('Please contact the dealer for the exact location.')}
-                                style={{
-                                    width: '100%',
-                                    height: '220px',
-                                    borderRadius: '12px',
-                                    overflow: 'hidden',
-                                    position: 'relative',
-                                    cursor: 'pointer',
-                                    border: '1px solid var(--border)',
-                                    boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
-                                    background: 'var(--bg-2)'
-                                }}
-                            >
-                                <img
-                                    src="https://images.unsplash.com/photo-1526778548025-fa2f459cd5ce?w=800&q=80"
-                                    alt="Map Preview"
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover', filter: property.mapUrl ? 'brightness(0.6)' : 'brightness(0.3) grayscale(0.8)' }}
-                                />
-                                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '0.8rem', background: 'rgba(0,0,0,0.3)' }}>
-                                    <div style={{ fontSize: '2.5rem', filter: 'drop-shadow(0 5px 15px rgba(0,0,0,0.5))' }}>📍</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                                        <div style={{ background: property.mapUrl ? 'var(--accent)' : 'var(--text-3)', color: '#fff', padding: '0.75rem 2rem', borderRadius: '100px', fontSize: '0.9rem', fontWeight: 800, boxShadow: '0 10px 30px rgba(59, 130, 246, 0.4)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            {property.mapUrl ? '🚀 Get Live Directions on Google Maps' : 'Location'}
-                                        </div>
-                                        {property.mapUrl && <p style={{ fontSize: '0.7rem', color: '#fff', fontWeight: 600 }}>Click to open in a new tab</p>}
-                                    </div>
-                                </div>
-                            </div>
                         </div>
 
                         <div style={{ display: 'flex', background: 'var(--surface)', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', marginBottom: '1.75rem' }}>

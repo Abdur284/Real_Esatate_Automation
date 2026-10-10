@@ -2,12 +2,13 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const api = vi.hoisted(() => ({ fromPlan2d: vi.fn(), generate: vi.fn(), analyzePlan: vi.fn() }));
+const api = vi.hoisted(() => ({ fromPlan2d: vi.fn(), generate: vi.fn(), analyzePlan: vi.fn(), generateFromImage: vi.fn() }));
 const viewerProps = vi.hoisted(() => ({ last: null }));
 vi.mock('../api', () => ({
     default: { design3d: { ...api, modelUrl: (p) => (p ? `http://api${p}` : null) } },
 }));
 vi.mock('../components/Navbar', () => ({ default: () => null }));
+vi.mock('../photoPixels', () => ({ photoToPixels: () => Promise.resolve({ data: 'AAAA', width: 8, height: 8 }) }));
 vi.mock('../components/Footer', () => ({ default: () => null }));
 vi.mock('../components/threeD/ThreeDViewer', () => ({
     default: (props) => {
@@ -23,7 +24,6 @@ vi.mock('../components/threeD/ThreeDViewer', () => ({
 }));
 
 const { default: ThreeDDesign } = await import('./ThreeDDesign');
-const { LAST_PLAN_KEY } = await import('../components/floorPlanExport');
 
 const savedPlan = {
     status: 'FEASIBLE', plot: { width_ft: 20, length_ft: 30, area_sqft: 600 },
@@ -53,6 +53,10 @@ const built = {
 };
 
 const renderPage = () => render(<MemoryRouter><ThreeDDesign /></MemoryRouter>);
+// "View in 3D" on the 2D Design page sends its plan in the router state.
+const renderWithPlan = () => render(
+    <MemoryRouter initialEntries={[{ pathname: '/3d-design', state: { plan2d: savedPlan } }]}><ThreeDDesign /></MemoryRouter>,
+);
 
 beforeEach(() => {
     Object.values(api).forEach((f) => f.mockReset());
@@ -61,23 +65,20 @@ beforeEach(() => {
 });
 
 describe('3D Design page', () => {
-    it('offers the three ways in and explains when there is no 2D design yet', () => {
+    it('offers two ways in: a written brief or an uploaded 2D design', () => {
         renderPage();
+        expect(screen.getAllByRole('tab')).toHaveLength(2);
         expect(screen.getByRole('tab', { name: /Describe requirements/ })).toHaveAttribute('aria-selected', 'true');
         fireEvent.click(screen.getByRole('tab', { name: /Upload 2D design/ }));
         expect(screen.getByRole('button', { name: 'Analyze floor plan' })).toBeDisabled();
-        fireEvent.click(screen.getByRole('tab', { name: /Use existing 2D design/ }));
-        expect(screen.getByText(/No 2D design yet/)).toBeInTheDocument();
+        expect(screen.queryByRole('tab', { name: /Use existing 2D design/ })).toBeNull();
     });
 
-    it('builds the latest 2D design, shows progress, then the viewer and room details', async () => {
-        localStorage.setItem(LAST_PLAN_KEY, JSON.stringify(savedPlan));
+    it('builds a plan sent from 2D Design, shows progress, then the viewer and room details', async () => {
         let resolve;
         api.fromPlan2d.mockReturnValue(new Promise((r) => { resolve = r; }));
-        renderPage();
-        fireEvent.click(screen.getByRole('tab', { name: /Use existing 2D design/ }));
-        fireEvent.click(screen.getByRole('button', { name: 'Build this design in 3D' }));
-        expect(screen.getByTestId('page-loading')).toHaveTextContent('Generating 3D model…');
+        renderWithPlan();
+        expect(await screen.findByTestId('page-loading')).toHaveTextContent('Generating 3D model…');
         expect(api.fromPlan2d).toHaveBeenCalledWith(savedPlan);
 
         resolve(built);
@@ -109,21 +110,52 @@ describe('3D Design page', () => {
     });
 
     it('shows a readable message when the plan cannot be built', async () => {
-        localStorage.setItem(LAST_PLAN_KEY, JSON.stringify(savedPlan));
         api.fromPlan2d.mockResolvedValue({ status: 'NOT_FEASIBLE', message: 'The 2D plan\'s geometry is invalid.' });
-        renderPage();
-        fireEvent.click(screen.getByRole('tab', { name: /Use existing 2D design/ }));
-        fireEvent.click(screen.getByRole('button', { name: 'Build this design in 3D' }));
+        renderWithPlan();
         expect(await screen.findByText('NOT FEASIBLE')).toBeInTheDocument();
         expect(screen.queryByTestId('stub-viewer')).toBeNull();
     });
 
     it('reports an unreachable backend without crashing', async () => {
-        localStorage.setItem(LAST_PLAN_KEY, JSON.stringify(savedPlan));
         api.fromPlan2d.mockRejectedValue(new Error('Failed to fetch'));
-        renderPage();
-        fireEvent.click(screen.getByRole('tab', { name: /Use existing 2D design/ }));
-        fireEvent.click(screen.getByRole('button', { name: 'Build this design in 3D' }));
+        renderWithPlan();
         expect(await screen.findByText(/Make sure the backend is running/)).toBeInTheDocument();
+    });
+
+    it('shows that the 3D model was checked against the 2D plan', async () => {
+        api.fromPlan2d.mockResolvedValue({
+            ...built,
+            validation: {
+                passed: true,
+                checks: [
+                    { name: 'rooms', ok: true, detail: "All 2 room(s) have the plan's exact position and size." },
+                    { name: 'openings', ok: false, detail: '1 door(s) and 0 window(s) placed; 1 could not be placed.' },
+                ],
+            },
+        });
+        renderWithPlan();
+        const box = await screen.findByTestId('fidelity');
+        expect(box).toHaveTextContent('Matches your 2D plan');
+        expect(box).toHaveTextContent('exact position and size');
+        expect(box).toHaveTextContent('1 could not be placed');
+    });
+
+    it('sends a floor plan uploaded as a property photo to the floor-plan reader instead', async () => {
+        globalThis.URL.createObjectURL = vi.fn(() => 'blob:preview');
+        globalThis.URL.revokeObjectURL = vi.fn();
+        api.generateFromImage.mockResolvedValue({ status: 'FLOOR_PLAN_DETECTED', message: 'This image is a 2D floor plan.' });
+        api.analyzePlan.mockResolvedValue({ status: 'NEEDS_DIMENSIONS', message: 'Enter the size.', analysis: { counts: { rooms: 4 } } });
+        const { container } = renderPage();
+        const plan = new File([new Uint8Array([137, 80, 78, 71])], 'plan.png', { type: 'image/png' });
+        fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [plan] } });
+        fireEvent.change(screen.getByLabelText('Your requirements'), { target: { value: 'same house' } });
+        const submit = await screen.findByRole('button', { name: 'Generate from Photo' });
+        await new Promise((r) => setTimeout(r, 0));
+        fireEvent.click(submit);
+        expect(await screen.findByText('This image is a 2D floor plan.')).toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: /Upload 2D design/ })).toHaveAttribute('aria-selected', 'true');
+        expect(api.analyzePlan).toHaveBeenCalledWith(expect.objectContaining({ image: plan }));
+        expect(api.generate).not.toHaveBeenCalled();
+        expect(screen.queryByTestId('stub-viewer')).toBeNull();
     });
 });

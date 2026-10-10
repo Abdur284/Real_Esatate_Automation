@@ -1,4 +1,3 @@
-import AIChat from '../components/AIChat';
 import FloorPlanGenerator from '../components/FloorPlanGenerator';
 import { useEffect, useRef } from 'react';
 
@@ -16,7 +15,6 @@ export default function TwoDDesign() {
 
     const addReveal = (el) => { if (el && !revealRefs.current.includes(el)) revealRefs.current.push(el); };
 
-    const scrollToChat = () => document.getElementById('ai-chat-section')?.scrollIntoView({ behavior: 'smooth' });
     const scrollToGenerator = () => document.getElementById('plan-generator')?.scrollIntoView({ behavior: 'smooth' });
 
     return (
@@ -99,7 +97,7 @@ export default function TwoDDesign() {
                             <div>
                                 <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: '1.2rem', fontWeight: 700, color: 'var(--text)', marginBottom: '0.6rem' }}>{step.title}</h3>
                                 <p style={{ fontSize: '0.9rem', color: 'var(--text-2)', lineHeight: 1.7, marginBottom: '1.25rem' }}>{step.desc}</p>
-                                <button className="btn-feature" onClick={scrollToChat}>{step.btn}</button>
+                                <button className="btn-feature" onClick={scrollToGenerator}>{step.btn}</button>
                             </div>
                             <div style={{ borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--border)', aspectRatio: '16/10', background: 'var(--surface)', position: 'relative' }}>
                                 <img src={step.img} alt={step.title} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.85)' }} />
@@ -129,45 +127,6 @@ export default function TwoDDesign() {
                             <p style={{ fontSize: '0.875rem', color: 'var(--text-2)', lineHeight: 1.65 }}>{feat.desc}</p>
                         </div>
                     ))}
-                </div>
-            </section>
-
-            {/* AI CHAT SECTION */}
-            <section className="chat-section" id="ai-chat-section" style={{ background: 'var(--bg-2)', padding: '6rem 2rem' }}>
-                <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-                    <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-                        <div className="sec-label">AI Floor Plan Creator</div>
-                        <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 'clamp(1.8rem, 3vw, 2.5rem)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: '0.75rem' }}>Get started with a powerful AI floor plan creator</h2>
-                        <p style={{ fontSize: '0.95rem', color: 'var(--text-2)', maxWidth: '520px', margin: '0 auto', lineHeight: 1.75 }}>Just describe your space and let AI do the heavy lifting — walls, rooms, dimensions, and zones, generated instantly.</p>
-                    </div>
-                    <AIChat
-                        title="2D Floor Plan AI"
-                        icon="🏗️"
-                        welcomeText="Tell me about your room or building layout and I'll help you design a detailed 2D floor plan — including dimensions, room placement, doors, and windows."
-                        placeholder="e.g. Design a 3-bedroom apartment with an open-plan kitchen and living room, 1200 sq ft..."
-                        chips={['Design a 2-bedroom flat', 'Open-plan kitchen & living room', 'Office layout 500 sq ft', 'Add a bathroom to my plan']}
-                        systemContext="You are an expert architectural AI assistant specializing in 2D floor plan design. When users describe a space, provide detailed, structured floor plan descriptions including: room dimensions and layout, placement of doors, windows, and hallways, suggested furniture placement, ASCII/text-based diagram when helpful, and practical design tips. Keep responses clear, professional, and actionable. Format measurements in both feet and meters when possible."
-                    />
-                    <div className="info-panel" style={{ marginTop: '1.5rem' }}>
-                        <div className="info-card">
-                            <div className="info-card-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-                            </div>
-                            <div>
-                                <h4>What can you ask?</h4>
-                                <p>Describe room sizes, number of rooms, layout preferences (open plan, separate rooms), placement of doors and windows, or special requirements like accessibility features.</p>
-                            </div>
-                        </div>
-                        <div className="info-card">
-                            <div className="info-card-icon">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
-                            </div>
-                            <div>
-                                <h4>Tip for best results</h4>
-                                <p>Include total area (sq ft or m²), number of rooms, and any specific requirements. The more detail you provide, the more accurate your floor plan will be.</p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </section>
 

@@ -67,6 +67,34 @@ async function request(path, { method = 'GET', body, form, fallback } = {}) {
 }
 
 const api = {
+  auth: {
+    /** Forgotten password, step 1: email a 6-digit code (same answer whether or not the account exists) */
+    requestResetCode: (email) =>
+      request('/api/auth/password-reset/request', { method: 'POST', body: { email }, fallback: 'The code could not be sent.' }),
+
+    /** Step 2: check the code; resolves to { reset_token } */
+    verifyResetCode: (email, code) =>
+      request('/api/auth/password-reset/verify', { method: 'POST', body: { email, code }, fallback: 'That code could not be checked.' }),
+
+    /** Step 3: set the new password */
+    resetPassword: (resetToken, newPassword) =>
+      request('/api/auth/password-reset/confirm', {
+        method: 'POST',
+        body: { reset_token: resetToken, new_password: newPassword },
+        fallback: 'The password could not be changed.',
+      }),
+  },
+
+  properties: {
+    /** Zameen.com listings via our backend (the API key stays on the server); { mode, listings, error } */
+    external: (filters = {}) => {
+      const qs = new URLSearchParams();
+      Object.entries(filters).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') qs.set(k, v); });
+      const query = qs.toString();
+      return request(`/api/properties/external${query ? `?${query}` : ''}`, { fallback: 'Zameen.com listings could not be loaded.' });
+    },
+  },
+
   chat: {
     /** Send a message to the AI chat backend (signed-in users are identified by their token) */
     send: ({ message, context = '', history = [] }) =>

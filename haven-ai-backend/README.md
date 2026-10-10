@@ -33,6 +33,7 @@ tests/                    pytest suite
 python -m venv venv
 venv\Scripts\activate          # macOS/Linux: source venv/bin/activate
 pip install -r requirements-dev.txt
+pip install --no-deps rapidocr-onnxruntime==1.4.4   # floor-plan text (OCR); optional
 copy .env.example .env            # macOS/Linux: cp .env.example .env  — then fill it in
 uvicorn app.main:app --reload
 ```

@@ -7,6 +7,11 @@ import * as THREE from 'three';
 
 export const FT_TO_M = 0.3048;
 const LOOK_AHEAD_M = 0.6;
+export const DEFAULT_FOV = 45;
+// Inside a room a normal lens shows one wall close up; a wide lens, like a
+// phone's 0.5x camera, shows most of the room from its corner.
+export const INTERIOR_FOV = 80;
+const ROOM_MARGIN_M = 2.5;
 
 /** Collects the named parts of a HAVEN house scene from node extras (userData). */
 export function indexScene(root) {
@@ -114,36 +119,56 @@ const VIEW_DIRECTIONS = {
     side: [1, 0.14, 0],
     back: [0, 0.14, -1],
     top: [0, 1, 0.0005], // a hair off vertical keeps OrbitControls well-defined
+    room: [0.5, 1.3, 0.85], // looking down into a room, its neighbours around it
 };
 
 /**
- * Camera pose for a named view: { position, target } in metres.
+ * Camera pose for a named view: { position, target, fov } in metres/degrees.
  *   exterior | front | side | back | top  frame the whole model
  *   fit                                    keeps `currentDirection`, reframes
- *   interior                               eye height inside `room` (or the largest room)
+ *   room                                   looks down into `room` with its neighbours in view
+ *   interior                               wide view from a corner of `room` (or the largest room)
  */
-export function computeView(name, { meta, fov = 45, aspect = 1.6, room = null, rooms = [], currentDirection = null }) {
+export function computeView(name, { meta, fov = DEFAULT_FOV, aspect = 1.6, room = null, rooms = [], currentDirection = null }) {
     if (name === 'interior') {
         const target = room ?? [...rooms].filter((r) => r.enclosed !== false)
             .sort((a, b) => b.area_sqft - a.area_sqft)[0];
         if (target) {
             const b = roomBounds(target, meta);
-            const floorY = b.min[1];
-            const cx = (b.min[0] + b.max[0]) / 2;
-            const inset = Math.min(0.6, (b.max[2] - b.min[2]) * 0.2);
-            const eye = floorY + 5.3 * FT_TO_M;
+            const eye = b.min[1] + 5.3 * FT_TO_M;
+            // Stand in the front-left corner (just off the walls) and look at
+            // the opposite corner: the diagonal shows the most of the room.
+            const inset = (lo, hi) => Math.min(0.35, (hi - lo) * 0.2);
+            const ix = inset(b.min[0], b.max[0]);
+            const iz = inset(b.min[2], b.max[2]);
+            const from = [b.min[0] + ix, eye, b.max[2] - iz];
+            const to = [b.max[0] - ix, eye, b.min[2] + iz];
+            const len = Math.hypot(to[0] - from[0], to[2] - from[2]) || 1;
             // The orbit target sits just ahead of the eye, so dragging turns
             // the view in place (look around) instead of swinging the camera
             // through the walls.
             return {
-                position: [cx, eye, b.max[2] - inset],
-                target: [cx, eye - 0.05, b.max[2] - inset - LOOK_AHEAD_M],
+                position: from,
+                target: [from[0] + ((to[0] - from[0]) / len) * LOOK_AHEAD_M, eye - 0.05,
+                    from[2] + ((to[2] - from[2]) / len) * LOOK_AHEAD_M],
+                fov: INTERIOR_FOV,
                 room: target,
             };
         }
         name = 'exterior';
     }
-    const bounds = room ? roomBounds(room, meta) : modelBounds(meta);
+    let bounds = room ? roomBounds(room, meta) : modelBounds(meta);
+    if (name === 'room' && room) {
+        // Frame the room plus a margin, so it is seen in its place in the house.
+        // The margin never reaches past the plot, so a room is never framed
+        // wider than the whole house.
+        const m = Math.max(ROOM_MARGIN_M, 0.5 * Math.max(bounds.max[0] - bounds.min[0], bounds.max[2] - bounds.min[2]));
+        const plot = modelBounds(meta);
+        bounds = {
+            min: [Math.max(plot.min[0], bounds.min[0] - m), bounds.min[1], Math.max(plot.min[2], bounds.min[2] - m)],
+            max: [Math.min(plot.max[0], bounds.max[0] + m), bounds.max[1], Math.min(plot.max[2], bounds.max[2] + m)],
+        };
+    }
     const center = bounds.min.map((v, i) => (v + bounds.max[i]) / 2);
     const size = bounds.max.map((v, i) => v - bounds.min[i]);
     const radius = Math.hypot(...size) / 2;
@@ -155,5 +180,6 @@ export function computeView(name, { meta, fov = 45, aspect = 1.6, room = null, r
     return {
         position: center.map((c, i) => c + dir.getComponent(i) * distance),
         target: center,
+        fov,
     };
 }

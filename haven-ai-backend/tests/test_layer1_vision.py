@@ -77,9 +77,19 @@ def test_confidence_and_provenance(simple):
     assert set(a["confidence"]) == {"walls", "rooms", "openings", "dimensions", "room_types", "overall"}
     assert a["confidence"]["walls"] >= 0.8 and a["confidence"]["rooms"] >= 0.8
     assert a["confidence"]["dimensions"] == 1.0
-    # Names are not read from images, so types are unknown and review is required.
+    # The printed labels name every room, so nothing is left for the user to type.
+    assert a["counts"]["named_rooms"] == 6
+    assert all(it["detection"]["type_source"] == "read_from_label" for it in items(res["plan"]))
+
+
+def test_without_text_recognition_rooms_stay_unnamed(simple, monkeypatch):
+    from app.services.plan_vision import text as plan_text
+    monkeypatch.setattr(plan_text, "read_text", lambda bgr: None)
+    _, data = simple
+    res = analyze_floor_plan(data, width_ft=25, depth_ft=40)
+    a = res["analysis"]
     assert a["review_required"] is True
-    assert any("not read" in m for m in a["missing"])
+    assert any("not installed" in m for m in a["missing"])
     assert all(it["type"] == "other" and it["detection"]["type_source"] == "unknown" for it in items(res["plan"]))
 
 

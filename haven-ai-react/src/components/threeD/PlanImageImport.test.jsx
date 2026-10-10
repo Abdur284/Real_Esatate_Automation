@@ -113,4 +113,30 @@ describe('PlanImageImport', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Analyze floor plan' }));
         expect(await screen.findByRole('alert')).toHaveTextContent('Only PNG, JPEG or WebP');
     });
+
+    it('shows the names and dimensions read from the drawing', async () => {
+        const named = structuredClone(plan);
+        named.design.ground_floor.rooms[0] = {
+            ...named.design.ground_floor.rooms[0], name: 'Living Room', type: 'living_room',
+            detection: { type_source: 'read_from_label', printed_size: "12' x 14'" },
+        };
+        analyzePlan.mockResolvedValue({
+            status: 'ANALYZED', message: 'Found 2 room(s).', plan: named,
+            analysis: analysis({ text_read: { room_labels: ['LIVING ROOM'], dimensions: ["12' x 14'", '26 ft'], other: [] } }),
+        });
+        render(<PlanImageImport onBuild={() => {}} />);
+        upload();
+        fireEvent.click(screen.getByRole('button', { name: 'Analyze floor plan' }));
+        expect(await screen.findByTestId('text-read')).toHaveTextContent("LIVING ROOM · 12' x 14' · 26 ft");
+        expect(screen.getByText("Name read from drawing (12' x 14')")).toBeInTheDocument();
+        expect(screen.getByLabelText('Name of Living Room')).toHaveValue('Living Room');
+    });
+
+    it('analyzes a floor plan handed over from the photo upload straight away', async () => {
+        analyzePlan.mockResolvedValue({ status: 'ANALYZED', message: 'Found 2 room(s).', plan, analysis: analysis() });
+        const handed = file();
+        render(<PlanImageImport onBuild={() => {}} initialFile={handed} />);
+        expect(await screen.findByText('Review the floor plan')).toBeInTheDocument();
+        expect(analyzePlan).toHaveBeenCalledWith(expect.objectContaining({ image: handed }));
+    });
 });

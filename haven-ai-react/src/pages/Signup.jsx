@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { authErrorMessage, useAuth } from "../auth/AuthContext";
+import api from "../api";
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 const fmtCNIC = v => { let d = v.replace(/\D/g, ""); if (d.length > 5) d = d.slice(0, 5) + "-" + d.slice(5); if (d.length > 13) d = d.slice(0, 13) + "-" + d.slice(13, 14); return d; };
@@ -47,17 +48,128 @@ function AuthField({ label, fieldKey, type = "text", value, error, onChange, onS
     );
 }
 
+// ─── FORGOT PASSWORD: email → 6-digit code → new password ────────────────────
+const RESEND_SECONDS = 60;
+const btnStyle = (busy) => ({ width: "100%", padding: "0.9rem", background: C.accent, border: "none", borderRadius: "12px", color: "#fff", fontFamily: "inherit", fontSize: "0.92rem", fontWeight: 700, cursor: "pointer", boxShadow: "0 6px 28px rgba(59,130,246,0.35)", opacity: busy ? 0.7 : 1, marginTop: "0.25rem" });
+const linkBtn = { color: C.accent2, cursor: "pointer", background: "none", border: "none", padding: 0, font: "inherit" };
+
+function ForgotPassword({ initialEmail, onBack, onDone }) {
+    const [step, setStep] = useState("email");   // email | code | password
+    const [form, setForm] = useState({ email: initialEmail || "", code: "", password: "", confirm: "" });
+    const [errs, setErrs] = useState({});
+    const [formErr, setFormErr] = useState("");
+    const [info, setInfo] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [token, setToken] = useState("");
+    const [wait, setWait] = useState(0);
+
+    useEffect(() => {
+        if (wait <= 0) return undefined;
+        const t = setTimeout(() => setWait(w => w - 1), 1000);
+        return () => clearTimeout(t);
+    }, [wait]);
+
+    const handleChange = useCallback((key, value) => {
+        setForm(f => ({ ...f, [key]: value }));
+        setErrs(e => ({ ...e, [key]: "" }));
+    }, []);
+
+    const run = async (fn) => {
+        if (busy) return;
+        setBusy(true); setFormErr("");
+        try { await fn(); } catch (e) { setFormErr(e.message || "Something went wrong. Please try again."); }
+        finally { setBusy(false); }
+    };
+
+    const sendCode = () => {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) { setErrs({ email: "Enter a valid email address." }); return; }
+        run(async () => {
+            const res = await api.auth.requestResetCode(form.email.trim());
+            setInfo(res.message);
+            setStep("code");
+            setWait(RESEND_SECONDS);
+        });
+    };
+
+    const checkCode = () => {
+        const code = form.code.trim();
+        if (!/^\d{6}$/.test(code)) { setErrs({ code: "Enter the 6-digit code from the email." }); return; }
+        run(async () => {
+            const res = await api.auth.verifyResetCode(form.email.trim(), code);
+            setToken(res.reset_token);
+            setInfo("");
+            setStep("password");
+        });
+    };
+
+    const savePassword = () => {
+        const e = {};
+        if (form.password.length < 6) e.password = "Password must be at least 6 characters.";
+        else if (form.password !== form.confirm) e.confirm = "Passwords do not match.";
+        if (Object.keys(e).length) { setErrs(e); return; }
+        run(async () => {
+            await api.auth.resetPassword(token, form.password);
+            onDone(form.email.trim());
+        });
+    };
+
+    const titles = {
+        email: ["Forgot password?", "Enter your account email and we'll send you a verification code."],
+        code: ["Enter verification code", `We sent a 6-digit code to ${form.email.trim()}. It is valid for 10 minutes.`],
+        password: ["Set a new password", "Choose a new password for your account."],
+    };
+
+    return (
+        <>
+            <div style={{ fontWeight: 800, fontSize: "1.6rem", color: C.text, letterSpacing: "-0.03em", marginBottom: "0.35rem" }}>{titles[step][0]}</div>
+            <div style={{ fontSize: "0.82rem", color: C.text2, marginBottom: "1.5rem" }}>{titles[step][1]}</div>
+
+            {info && <div role="status" style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: "10px", padding: "0.7rem 0.9rem", fontSize: "0.78rem", color: "#6ee7b7", marginBottom: "1rem" }}>{info}</div>}
+            {formErr && <div role="alert" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "10px", padding: "0.7rem 0.9rem", fontSize: "0.78rem", color: "#fca5a5", marginBottom: "1rem" }}>{formErr}</div>}
+
+            {step === "email" && <>
+                <AuthField fieldKey="email" label="Email Address" type="email" value={form.email} error={errs.email} onChange={handleChange} onSubmit={sendCode} />
+                <button onClick={sendCode} disabled={busy} style={btnStyle(busy)}>{busy ? "Sending…" : "Send Verification Code →"}</button>
+            </>}
+
+            {step === "code" && <>
+                <AuthField fieldKey="code" label="Verification Code" value={form.code} error={errs.code} onChange={handleChange} onSubmit={checkCode} transform={v => v.replace(/\D/g, "").slice(0, 6)} />
+                <button onClick={checkCode} disabled={busy} style={btnStyle(busy)}>{busy ? "Checking…" : "Verify Code →"}</button>
+                <p style={{ fontSize: "0.72rem", color: C.text3, marginTop: "1rem", textAlign: "center" }}>
+                    Didn't get it? Check your spam folder, or{" "}
+                    {wait > 0
+                        ? <span>resend in {wait}s</span>
+                        : <button type="button" style={linkBtn} onClick={sendCode} disabled={busy}>send a new code</button>}
+                    {" · "}
+                    <button type="button" style={linkBtn} onClick={() => { setStep("email"); setInfo(""); setFormErr(""); }}>change email</button>
+                </p>
+            </>}
+
+            {step === "password" && <>
+                <AuthField fieldKey="password" label="New Password" type="password" value={form.password} error={errs.password} onChange={handleChange} onSubmit={savePassword} showStrength />
+                <AuthField fieldKey="confirm" label="Confirm New Password" type="password" value={form.confirm} error={errs.confirm} onChange={handleChange} onSubmit={savePassword} showStrength={false} />
+                <button onClick={savePassword} disabled={busy} style={btnStyle(busy)}>{busy ? "Saving…" : "Reset Password →"}</button>
+            </>}
+
+            <p style={{ fontSize: "0.72rem", color: C.text3, marginTop: "1rem", textAlign: "center" }}>
+                Remembered it? <button type="button" style={linkBtn} onClick={onBack}>Back to sign in</button>
+            </p>
+        </>
+    );
+}
+
 // ─── SIGN IN / CREATE ACCOUNT ────────────────────────────────────────────────
 export default function Signup() {
     const navigate = useNavigate();
     const [params, setParams] = useSearchParams();
     const { user, profile, ready, login, signup } = useAuth();
-    const tab = params.get("tab") === "signup" ? "signup" : "login";
+    const tab = ["signup", "forgot"].includes(params.get("tab")) ? params.get("tab") : "login";
     const [role, setRole] = useState("buyer");
     const [form, setForm] = useState({ email: "", password: "", name: "", cnic: "", mobile: "" });
     const [errs, setErrs] = useState({});
     const [formErr, setFormErr] = useState("");
     const [loading, setLoading] = useState(false);
+    const [notice, setNotice] = useState("");
 
     // Signed in (now or already): go where the user was heading, else by role.
     useEffect(() => {
@@ -100,7 +212,13 @@ export default function Signup() {
         const next = new URLSearchParams(params);
         next.set("tab", t);
         setParams(next, { replace: true });
-        setFormErr(""); setErrs({});
+        setFormErr(""); setErrs({}); setNotice("");
+    };
+
+    const passwordWasReset = (email) => {
+        switchTab("login");
+        setForm(f => ({ ...f, email, password: "" }));
+        setNotice("Your password has been changed. Sign in with your new password.");
     };
 
     return (
@@ -109,11 +227,6 @@ export default function Signup() {
             <div className="auth-visual" style={{ position: "relative", background: C.bg2, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "3rem", overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <Link to="/" style={{ textDecoration: "none" }}><span style={{ fontWeight: 800, fontSize: "1.5rem", color: C.text, letterSpacing: "-0.03em" }}>HAVEN<span style={{ color: C.accent }}>.</span>AI</span></Link>
-                    <div style={{ display: "flex", gap: "1rem" }}>
-                        {[["2D", "/2d-design"], ["3D", "/3d-design"], ["Cost", "/cost-estimation"], ["Interior", "/interior-design"], ["Properties", "/properties"]].map(([lbl, url]) => (
-                            <Link key={url} to={url} style={{ fontSize: "0.72rem", fontWeight: 600, color: C.text3, textDecoration: "none" }}>{lbl}</Link>
-                        ))}
-                    </div>
                 </div>
                 <div>
                     <h1 style={{ fontWeight: 800, fontSize: "2.2rem", color: C.text, lineHeight: 1.15, letterSpacing: "-0.03em", marginBottom: "0.75rem" }}>Find, Design &<br /><em style={{ fontStyle: "normal", color: C.accent }}>Own</em> your dream<br />home.</h1>
@@ -132,6 +245,9 @@ export default function Signup() {
                 <button onClick={() => navigate("/")} title="Back to Home" aria-label="Back to Home" style={{ position: "absolute", top: "1.25rem", right: "1.25rem", width: 36, height: 36, borderRadius: "50%", background: C.surface, border: `1px solid ${C.border2}`, color: C.text2, fontSize: "1rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "inherit" }}>✕</button>
 
                 <div style={{ width: "100%", maxWidth: "420px" }}>
+                    {tab === "forgot" ? (
+                        <ForgotPassword initialEmail={form.email} onBack={() => switchTab("login")} onDone={passwordWasReset} />
+                    ) : <>
                     {/* Tabs */}
                     <div role="tablist" style={{ display: "flex", background: C.surface, border: `1px solid ${C.border2}`, borderRadius: "14px", padding: "4px", marginBottom: "2rem", gap: "4px" }}>
                         {["login", "signup"].map(t => (
@@ -160,6 +276,7 @@ export default function Signup() {
                         </div>
                     )}
 
+                    {notice && <div role="status" style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: "10px", padding: "0.7rem 0.9rem", fontSize: "0.78rem", color: "#6ee7b7", marginBottom: "1rem" }}>{notice}</div>}
                     {formErr && <div role="alert" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: "10px", padding: "0.7rem 0.9rem", fontSize: "0.78rem", color: "#fca5a5", marginBottom: "1rem" }}>{formErr}</div>}
 
                     {/* Fields — using the stable AuthField component defined outside */}
@@ -170,8 +287,13 @@ export default function Signup() {
                     </>}
                     <AuthField fieldKey="email" label="Email Address" value={form.email} error={errs.email} onChange={handleChange} onSubmit={handleAuth} type="email" />
                     <AuthField fieldKey="password" label="Password" value={form.password} error={errs.password} onChange={handleChange} onSubmit={handleAuth} type="password" showStrength={tab === "signup"} />
+                    {tab === "login" && (
+                        <div style={{ textAlign: "right", margin: "-0.4rem 0 0.9rem" }}>
+                            <button type="button" style={{ ...linkBtn, fontSize: "0.75rem" }} onClick={() => switchTab("forgot")}>Forgot password?</button>
+                        </div>
+                    )}
 
-                    <button onClick={handleAuth} disabled={loading} style={{ width: "100%", padding: "0.9rem", background: C.accent, border: "none", borderRadius: "12px", color: "#fff", fontFamily: "inherit", fontSize: "0.92rem", fontWeight: 700, cursor: "pointer", boxShadow: "0 6px 28px rgba(59,130,246,0.35)", opacity: loading ? 0.7 : 1, marginTop: "0.25rem" }}>
+                    <button onClick={handleAuth} disabled={loading} style={btnStyle(loading)}>
                         {loading ? "Processing…" : tab === "login" ? "Sign In →" : "Create My Account →"}
                     </button>
                     <p style={{ fontSize: "0.72rem", color: C.text3, marginTop: "1rem", textAlign: "center" }}>
@@ -180,6 +302,7 @@ export default function Signup() {
                             {tab === "login" ? "Create one free" : "Sign in"}
                         </button>
                     </p>
+                    </>}
                 </div>
             </div>
         </div>

@@ -38,8 +38,8 @@ function FactList({ title, items, tone }) {
     );
 }
 
-export default function PlanImageImport({ onBuild, building }) {
-    const [file, setFile] = useState(null);
+export default function PlanImageImport({ onBuild, building, initialFile }) {
+    const [file, setFile] = useState(initialFile || null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [width, setWidth] = useState('');
     const [depth, setDepth] = useState('');
@@ -70,9 +70,9 @@ export default function PlanImageImport({ onBuild, building }) {
         setFile(f);
     };
 
-    const analyze = async (e) => {
+    const analyze = async (e, image = file) => {
         e?.preventDefault();
-        if (!file || analyzing) return;
+        if (!image || analyzing) return;
         setAnalyzing(true);
         setError(null);
         setResult(null);
@@ -80,7 +80,7 @@ export default function PlanImageImport({ onBuild, building }) {
         setChecked(false);
         try {
             const data = await api.design3d.analyzePlan({
-                image: file,
+                image,
                 widthFt: width ? parseFloat(width) : undefined,
                 depthFt: depth ? parseFloat(depth) : undefined,
                 front,
@@ -96,7 +96,15 @@ export default function PlanImageImport({ onBuild, building }) {
         }
     };
 
+    // A floor plan handed over from the photo upload is analysed straight away.
+    useEffect(() => {
+        if (initialFile) analyze(null, initialFile);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialFile]);
+
     const analysis = result?.analysis;
+    const textRead = analysis?.text_read;
+    const textList = textRead ? [...textRead.room_labels, ...textRead.dimensions] : [];
     const rows = plan ? reviewRows(plan) : [];
     const twoFloors = plan?.design?.floors === 2;
     const lowConfidence = Boolean(analysis?.low_confidence);
@@ -138,8 +146,9 @@ export default function PlanImageImport({ onBuild, building }) {
                     </button>
                 </div>
                 <p style={{ ...small, marginTop: '0.55rem' }}>
-                    Width and depth are the outside-wall-to-outside-wall size of the drawn plan. Printed measurements
-                    are not read from the image, so at least one is needed to build the model to scale.
+                    Room names and printed dimensions (e.g. 12' × 14', 26'-0") are read from the drawing and set the
+                    scale. Width and depth are optional: enter the outside-wall-to-outside-wall size of the drawn plan
+                    to override what is printed, or when the drawing has no measurements.
                 </p>
             </form>
 
@@ -163,6 +172,7 @@ export default function PlanImageImport({ onBuild, building }) {
                         <p style={{ ...small, marginTop: '0.4rem' }}>{analysis.counts.rooms} enclosed room(s) were found in the drawing.</p>
                     )}
                     {analysis?.hint && <p style={{ ...small, marginTop: '0.25rem' }}>{analysis.hint}</p>}
+                    {textList.length > 0 && <p style={{ ...small, marginTop: '0.25rem' }}>Text read: {textList.join(' · ')}</p>}
                 </div>
             )}
 
@@ -234,6 +244,7 @@ export default function PlanImageImport({ onBuild, building }) {
                                         <td style={{ padding: '0.3rem', color: 'var(--text-3)' }}>
                                             {({
                                                 user: 'Set by you',
+                                read_from_label: `Name read from drawing${r.detection?.printed_size ? ` (${r.detection.printed_size})` : ''}`,
                                                 inferred_from_colour_legend: 'Type from HAVEN colour legend',
                                                 inferred_from_stair_hatching: 'Stairs from tread lines',
                                                 unknown: 'Shape detected; type unknown',
@@ -251,6 +262,13 @@ export default function PlanImageImport({ onBuild, building }) {
                         <FactList title="Inferred" items={analysis.inferred} tone="#fbbf24" />
                         <FactList title="Missing / not read" items={analysis.missing} tone="#f87171" />
                     </div>
+                    {textRead && (
+                        <p style={{ ...small, marginBottom: '0.6rem' }} data-testid="text-read">
+                            {textList.length > 0
+                                ? <>Text read from the drawing: {textList.join(' · ')}</>
+                                : 'No room names or dimensions could be read from the drawing; name the rooms below.'}
+                        </p>
+                    )}
                     {analysis.warnings?.length > 0 && (
                         <details style={{ ...small, marginBottom: '0.8rem' }}>
                             <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Notes ({analysis.warnings.length})</summary>

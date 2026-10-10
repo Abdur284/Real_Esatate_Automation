@@ -2,10 +2,8 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Link, useLocation } from 'react-router-dom';
 import api from '../api';
 import ReferenceAnalysis from '../components/ReferenceAnalysis';
-import FloorPlanViewer from '../components/FloorPlanViewer';
 import ModelToolbar from '../components/threeD/ModelToolbar';
 import PlanImageImport from '../components/threeD/PlanImageImport';
-import { LAST_PLAN_KEY } from '../components/floorPlanExport';
 import { photoToPixels } from '../photoPixels';
 
 // Three.js + React Three Fiber are large and only this page needs them, so
@@ -33,7 +31,6 @@ const ROOM_SWATCHES = {
 const SOURCES = [
     ['brief', '✍️ Describe requirements'],
     ['upload', '📐 Upload 2D design'],
-    ['existing', '🗂️ Use existing 2D design'],
 ];
 
 const DEFAULT_LAYERS = {
@@ -56,15 +53,6 @@ const field = {
     fontFamily: 'Inter, sans-serif', fontSize: '0.85rem',
 };
 
-function readLastPlan() {
-    try {
-        const raw = localStorage.getItem(LAST_PLAN_KEY);
-        return raw ? JSON.parse(raw) : null;
-    } catch {
-        return null;
-    }
-}
-
 /** The same room description the GLB carries in its extras, built from the
  *  model JSON (so the room list and 3D clicks select the same thing). */
 function roomInfo(room, storey, model) {
@@ -84,7 +72,7 @@ export default function ThreeDDesign() {
     const location = useLocation();
     const plan2d = location.state?.plan2d;
 
-    const [source, setSource] = useState(plan2d ? 'existing' : 'brief');
+    const [source, setSource] = useState('brief');
     const [prompt, setPrompt] = useState('');
     const [width, setWidth] = useState('');
     const [length, setLength] = useState('');
@@ -100,7 +88,7 @@ export default function ThreeDDesign() {
     const [frontWindows, setFrontWindows] = useState('');
     const [garageDoor, setGarageDoor] = useState(false);
     const [existingBalcony, setExistingBalcony] = useState(false);
-    const [lastPlan] = useState(readLastPlan);
+    const [planFile, setPlanFile] = useState(null);
 
     // Preview URL for the chosen photo, released when it changes.
     useEffect(() => {
@@ -185,13 +173,17 @@ export default function ThreeDDesign() {
     const levels = useMemo(() => (model ? model.storeys.map((s) => s.level) : []), [model]);
     const viewerOptions = useMemo(() => ({
         ...layers,
+        // A selected room is looked at from above, so the roof would hide it.
+        showRoof: layers.showRoof && !selectedRoom,
         visibleLevels: levelFilter === 'all' ? levels : [Number(levelFilter)],
-    }), [layers, levelFilter, levels]);
-    const existingPlan = plan2d || lastPlan;
+    }), [layers, levelFilter, levels, selectedRoom]);
 
     const selectRoom = (room) => {
         setSelectedRoom(room);
-        if (room && levelFilter !== 'all' && Number(levelFilter) !== room.level) setLevelFilter(String(room.level));
+        if (!room) return;
+        // Show the room's own floor (upper floors would cover it) and fly to it.
+        if (levels.length > 1) setLevelFilter(String(room.level));
+        requestView('room');
     };
 
     const onView = (name) => {
@@ -226,6 +218,15 @@ export default function ThreeDDesign() {
                 plotLengthFt: length ? parseFloat(length) : undefined,
                 storeys: storeys === 'auto' ? undefined : parseInt(storeys, 10),
             });
+            if (data.status === 'FLOOR_PLAN_DETECTED') {
+                // A floor plan is reconstructed from its drawing, never used as a
+                // facade photo: hand it to the 2D-design import, which reads it.
+                setPlanFile(photo);
+                removePhoto();
+                setSource('upload');
+                setNotice(data.message);
+                return;
+            }
             showResult(data);
         } catch (err) {
             // Photo requests return readable reasons (bad file, AI quota); keep those.
@@ -268,8 +269,8 @@ export default function ThreeDDesign() {
                     <div className="page-hero-icon">🏛️</div>
                     <div>
                         <h1>3D Design Visualizer</h1>
-                        <p>Describe your plot and requirements, upload a 2D floor plan, or use a design from
-                            HAVEN's 2D Design page. The backend reads the architecture, builds exact 3D geometry,
+                        <p>Describe your plot and requirements, or upload a 2D floor plan. The backend reads the
+                            architecture, builds exact 3D geometry,
                             and you explore it here — orbit, zoom, pan, look inside and inspect each room.</p>
                     </div>
                 </div>
@@ -320,7 +321,7 @@ export default function ThreeDDesign() {
                                 <div style={{ fontSize: '0.72rem', color: 'var(--text-3)', lineHeight: 1.5 }}>
                                     {photo
                                         ? 'Used as a visual reference only. Give the plot size and number of storeys, describe the changes you want above, and tell us what is on the front now.'
-                                        : `JPEG, PNG or WebP, up to ${MAX_PHOTO_MB} MB. Used as a reference, not as exact measurements.`}
+                                        : `JPEG, PNG or WebP, up to ${MAX_PHOTO_MB} MB. Used as a reference, not as exact measurements. For a floor-plan drawing, use "Upload 2D design".`}
                                 </div>
                                 {photo && (
                                     <div style={{ display: 'flex', gap: '0.9rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.45rem', fontSize: '0.74rem', color: 'var(--text-2)' }}>
@@ -381,41 +382,10 @@ export default function ThreeDDesign() {
                     </form>
                 )}
 
-                {source === 'upload' && <PlanImageImport onBuild={buildFromPlan} building={loading} />}
-
-                {source === 'existing' && (
-                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '1.1rem', marginBottom: '1.25rem' }}>
-                        {existingPlan?.design ? (
-                            <div style={{ display: 'flex', gap: '1.1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                                <div style={{ width: 170, flexShrink: 0, borderRadius: 8, overflow: 'hidden' }}>
-                                    <FloorPlanViewer plot={existingPlan.plot} floor={existingPlan.design.ground_floor} />
-                                </div>
-                                <div style={{ flex: 1, minWidth: 220 }}>
-                                    <div style={{ fontWeight: 700, fontSize: '0.92rem', marginBottom: '0.3rem' }}>
-                                        {plan2d ? 'Plan sent from 2D Design' : 'Your latest 2D design'}
-                                    </div>
-                                    <p style={{ fontSize: '0.82rem', color: 'var(--text-2)', marginBottom: '0.7rem' }}>
-                                        {existingPlan.plot?.width_ft} × {existingPlan.plot?.length_ft} ft plot,{' '}
-                                        {existingPlan.design.floors} floor{existingPlan.design.floors === 2 ? 's' : ''}. Its rooms,
-                                        doors and windows are used directly — no image analysis is needed.
-                                    </p>
-                                    <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-                                        <button type="button" disabled={loading} onClick={() => buildFromPlan(existingPlan)}
-                                            style={{ ...btn(true), opacity: loading ? 0.6 : 1 }}>
-                                            {loading ? 'Generating 3D model…' : 'Build this design in 3D'}
-                                        </button>
-                                        <Link to="/2d-design" style={{ ...btn(false), textDecoration: 'none' }}>Open 2D Design</Link>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <p style={{ fontSize: '0.86rem', color: 'var(--text-2)' }}>
-                                No 2D design yet. Create one on the <Link to="/2d-design" style={{ color: 'var(--accent)', fontWeight: 600 }}>2D Design page</Link>{' '}
-                                — it will appear here, or use its "View in 3D" button.
-                            </p>
-                        )}
-                    </div>
+                {source === 'upload' && notice && planFile && (
+                    <p role="status" style={{ fontSize: '0.82rem', color: 'var(--text-2)', marginBottom: '0.75rem' }}>{notice}</p>
                 )}
+                {source === 'upload' && <PlanImageImport onBuild={buildFromPlan} building={loading} initialFile={planFile} />}
 
                 {loading && (
                     <div aria-live="polite" data-testid="page-loading" style={{
@@ -548,6 +518,22 @@ export default function ThreeDDesign() {
                                     <dt>Covered area</dt><dd>{model.totals.covered_area_sqft} sqft</dd>
                                     <dt>Height</dt><dd>{model.totals.building_height_ft} ft</dd>
                                 </dl>
+
+                                {result.validation && (
+                                    <div data-testid="fidelity" style={{ marginBottom: '1rem' }}>
+                                        <h4 style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.35rem' }}>
+                                            {result.validation.passed ? '✓ Matches your 2D plan' : '⚠ Differences from your 2D plan'}
+                                        </h4>
+                                        <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '0.72rem', color: 'var(--text-2)', lineHeight: 1.5 }}>
+                                            {result.validation.checks.map((c) => (
+                                                <li key={c.name} style={{ display: 'flex', gap: '0.35rem' }}>
+                                                    <span aria-hidden="true" style={{ color: c.ok ? '#34d399' : '#fbbf24' }}>{c.ok ? '✓' : '!'}</span>
+                                                    <span>{c.detail}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
 
                                 {model.storeys.map((storey) => (
                                     <div key={storey.level} style={{ marginBottom: '0.9rem' }}>

@@ -84,8 +84,11 @@ def _pretty(rtype: str) -> str:
 
 
 def build_plan(seg: Dict[str, Any], wall: Dict[str, Any], sx: float, sy: float,
-               width_ft: float, depth_ft: float) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """Returns (plan, report). sx/sy are pixels per foot."""
+               width_ft: float, depth_ft: float, room_text: Optional[Dict[str, Any]] = None
+               ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Returns (plan, report). sx/sy are pixels per foot. room_text holds the
+    printed labels and sizes found inside each room (see service._room_text)."""
+    room_text = room_text or {"names": {}, "sizes": {}}
     bx, by, bw, bh = wall["bbox"]
     k = wall["k"]
     X = lambda px: (px - bx) / sx            # noqa: E731
@@ -119,19 +122,31 @@ def build_plan(seg: Dict[str, Any], wall: Dict[str, Any], sx: float, sy: float,
     interior_runs.sort()
     t_int_ft = round(interior_runs[len(interior_runs) // 2], 3) if interior_runs else None
 
-    # ── Room identity: stair hatching, then HAVEN's colour legend ──
+    # ── Room identity: printed label, then stair hatching, then HAVEN's colour legend ──
     legend = {r["label"]: match_legend(r["fill_rgb"]) for r in seg["rooms"]}
     use_all_legend = sum(1 for m in legend.values() if m and m[1]) >= 2
     counters: Dict[str, int] = {}
     items_by_label: Dict[int, List[Dict[str, Any]]] = {}
-    typed = 0
+    typed = named = merged = 0
+    used_names: Dict[str, int] = {}
     floor = {"rooms": [], "circulation": [], "open_spaces": []}
     for room in seg["rooms"]:
         parts = [r for r in raw if r["room"] is room and r["e"] - r["w"] >= 1.0 and r["n"] - r["s"] >= 1.0]
         if not parts:
             continue
         m = legend.get(room["label"])
-        if room["stairs"] >= 0.5:
+        printed = room_text["names"].get(room["label"]) or []
+        label_name = None
+        if printed:
+            # Biggest text first: the room name is usually the largest label.
+            printed = sorted(printed, key=lambda t: -(t["box"][2] - t["box"][0]) * (t["box"][3] - t["box"][1]))
+            names = list(dict.fromkeys(t["name"] for t in printed))
+            if len(names) > 1:
+                merged += 1
+            rtype, source, conf = printed[0]["type"], "read_from_label", printed[0]["score"]
+            label_name = " / ".join(names[:3])
+            named += 1
+        elif room["stairs"] >= 0.5:
             rtype, source, conf = "staircase", "inferred_from_stair_hatching", room["stairs"]
         elif m and (m[1] or use_all_legend):
             rtype, source, conf = m[0], "inferred_from_colour_legend", round(0.9 - m[2] / 100, 2)
@@ -140,7 +155,15 @@ def build_plan(seg: Dict[str, Any], wall: Dict[str, Any], sx: float, sy: float,
         if rtype != "other":
             typed += 1
         counters[rtype] = counters.get(rtype, 0) + 1
-        name = f"Room {sum(counters.values())}" if rtype == "other" else f"{_pretty(rtype)} {counters[rtype]}"
+        name = label_name or (f"Room {sum(counters.values())}" if rtype == "other"
+                              else f"{_pretty(rtype)} {counters[rtype]}")
+        if label_name:
+            # Two rooms printed "BEDROOM" become "Bedroom" and "Bedroom 2".
+            seen = used_names.get(name.lower(), 0)
+            used_names[name.lower()] = seen + 1
+            if seen:
+                name = f"{name} {seen + 1}"
+        sizes = room_text["sizes"].get(room["label"]) or []
         group = f"g{room['label']}" if len(parts) > 1 else None
         section = "open_spaces" if rtype in OPEN_AIR else "circulation" if rtype in CIRCULATION else "rooms"
         for pi, p in enumerate(parts):
@@ -156,6 +179,8 @@ def build_plan(seg: Dict[str, Any], wall: Dict[str, Any], sx: float, sy: float,
                     "shape": "multi_rectangle" if group else "rectangle",
                     "shape_fit": round(room["coverage"], 2),
                     **({"fixtures_seen": room["fixtures"]} if room["fixtures"] else {}),
+                    **({"label_text": [t["text"] for t in printed]} if printed else {}),
+                    **({"printed_size": sizes[0]["text"]} if sizes else {}),
                 },
             }
             if group:
@@ -221,6 +246,8 @@ def build_plan(seg: Dict[str, Any], wall: Dict[str, Any], sx: float, sy: float,
         "rooms": sum(len(v) for v in floor.values()),
         "distinct_rooms": len(items_by_label),
         "typed_rooms": typed,
+        "named_rooms": named,
+        "merged_labels": merged,
         "doors": placed["door"], "windows": placed["window"],
         "stairs": counters.get("staircase", 0),
         "opening_confidence": round(sum(op_conf) / len(op_conf), 2) if op_conf else None,

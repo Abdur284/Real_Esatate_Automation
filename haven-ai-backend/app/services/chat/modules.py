@@ -16,7 +16,6 @@ from app.services.design3d.service import generate_3d_model
 
 logger = logging.getLogger(__name__)
 
-COST_ESTIMATION_API = os.getenv("COST_ESTIMATION_API_URL", "MOCK")
 PROPERTY_REC_API     = os.getenv("PROPERTY_REC_API_URL", "MOCK")
 DESIGN_2D_API        = os.getenv("DESIGN_2D_API_URL", "MOCK")
 DESIGN_3D_API        = os.getenv("DESIGN_3D_API_URL", "MOCK")
@@ -47,8 +46,22 @@ async def call_module_api(module: str, params: Dict, user_message: str) -> Dict:
             return {"status": "ERROR", "message": "The 3D design service could not create a model right now. "
                                                   "Please try again in a minute."}
 
+    if module == "cost_estimation":
+        # Trained hybrid (rule-based + XGBoost) model in this same backend. Run
+        # in a thread (CPU work). If the model/ML stack is not installed, fall
+        # back to the typical-rate estimate so the chatbot still answers.
+        from app.services.cost.service import CostModelUnavailable, estimate_cost
+        try:
+            return await asyncio.to_thread(estimate_cost, user_message)
+        except CostModelUnavailable as e:
+            logger.info(f"[cost_estimation] model unavailable ({e}); using typical-rate estimate")
+            return await _mock_module_response("cost_estimation", params)
+        except Exception:
+            logger.exception("cost_estimation module failed")
+            return {"error": "CONNECTION_FAILED",
+                    "fallback_data": await _mock_module_response("cost_estimation", params)}
+
     api_map = {
-        "cost_estimation": COST_ESTIMATION_API,
         "property_rec":    PROPERTY_REC_API,
         "design_2d":       DESIGN_2D_API,
         "design_3d":       DESIGN_3D_API,
@@ -62,7 +75,7 @@ async def call_module_api(module: str, params: Dict, user_message: str) -> Dict:
         logger.info(f"[{module}] Using mock data (MOCK URL configured)")
         return await _mock_module_response(module, params)
 
-    payload = {"text": user_message, "params": params} if module == "cost_estimation" else {"query": user_message, "params": params}
+    payload = {"query": user_message, "params": params}
 
     last_error = None
     for attempt in range(1, API_RETRY_ATTEMPTS + 1):

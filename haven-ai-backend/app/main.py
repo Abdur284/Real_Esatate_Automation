@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.endpoints import admin, chat, design_2d, design_3d, interior
+from app.api.endpoints import admin, auth, chat, cost, design_2d, design_3d, interior, properties
 from app.core.config import settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -26,10 +26,13 @@ app.add_middleware(
 
 # Include Routers
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
+app.include_router(cost.router, prefix="/api/cost", tags=["Cost Estimation"])
 app.include_router(design_2d.router, prefix="/api/design/2d", tags=["2D Design"])
 app.include_router(design_3d.router, prefix="/api/design/3d", tags=["3D Design"])
 app.include_router(interior.router, prefix="/api/interior", tags=["Interior Design"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
+app.include_router(auth.router, prefix="/api/auth", tags=["Account"])
+app.include_router(properties.router, prefix="/api/properties", tags=["Properties"])
 
 @app.get("/")
 async def root():

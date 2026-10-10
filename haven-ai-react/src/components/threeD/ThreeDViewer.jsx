@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { disposeScene, loadHouse, webglAvailable } from './houseLoader';
 import {
-    applyVisibility, computeView, modelBounds, pickRoom, roomBounds, roomKey, setWallsTransparent,
+    DEFAULT_FOV, applyVisibility, computeView, modelBounds, pickRoom, roomBounds, roomKey, setWallsTransparent,
 } from './viewerUtils';
 
 /**
@@ -16,7 +16,7 @@ import {
  * moves the camera.
  */
 
-const FOV = 45;
+const FOV = DEFAULT_FOV;
 const BACKGROUND = '#e8edf3';
 
 /** Soft studio reflections for the PBR materials (no external HDR file). */
@@ -58,6 +58,11 @@ function Lights({ meta }) {
     );
 }
 
+function setFov(camera, fov) {
+    camera.fov = fov;
+    camera.updateProjectionMatrix();
+}
+
 /** OrbitControls plus smooth fly-to transitions. */
 function CameraRig({ rigRef }) {
     const { camera, gl } = useThree();
@@ -78,16 +83,17 @@ function CameraRig({ rigRef }) {
         rigRef.current = {
             controls,
             camera,
-            flyTo: ({ position, target }, instant = false) => {
-                const to = { p: new THREE.Vector3(...position), t: new THREE.Vector3(...target) };
+            flyTo: ({ position, target, fov = FOV }, instant = false) => {
+                const to = { p: new THREE.Vector3(...position), t: new THREE.Vector3(...target), fov };
                 if (instant) {
                     camera.position.copy(to.p);
                     controls.target.copy(to.t);
+                    setFov(camera, fov);
                     controls.update();
                     anim.current = null;
                     return;
                 }
-                anim.current = { from: { p: camera.position.clone(), t: controls.target.clone() }, to, k: 0 };
+                anim.current = { from: { p: camera.position.clone(), t: controls.target.clone(), fov: camera.fov }, to, k: 0 };
             },
         };
         return () => { rigRef.current = null; };
@@ -100,6 +106,9 @@ function CameraRig({ rigRef }) {
             const e = 1 - (1 - a.k) ** 3; // ease-out cubic
             camera.position.lerpVectors(a.from.p, a.to.p, e);
             controls.target.lerpVectors(a.from.t, a.to.t, e);
+            if (a.from.fov !== a.to.fov) {
+                setFov(camera, a.from.fov + (a.to.fov - a.from.fov) * e);
+            }
             if (a.k >= 1) anim.current = null;
         }
         controls.update();
@@ -172,7 +181,7 @@ function Scene({ house, options, selected, onSelectRoom, viewRequest, rigRef }) 
         const dir = rig.camera.position.clone().sub(rig.controls.target).normalize();
         rig.flyTo(computeView(viewRequest.name, {
             meta, fov: FOV, aspect, rooms,
-            room: viewRequest.name === 'interior' || viewRequest.name === 'fit' ? selected : null,
+            room: ['interior', 'fit', 'room'].includes(viewRequest.name) ? selected : null,
             currentDirection: dir.toArray(),
         }));
     }, [viewRequest]); // eslint-disable-line react-hooks/exhaustive-deps

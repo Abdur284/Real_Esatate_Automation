@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { AuthProvider } from './auth/AuthContext';
+import { AuthProvider, useAuth } from './auth/AuthContext';
 import ProtectedRoute from './auth/ProtectedRoute';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -27,6 +27,9 @@ function AppContent() {
     const isAdmin = location.pathname.startsWith('/admin');
     const isAuthPage = location.pathname.startsWith('/signup');
     const showSidebar = !isAdmin && !isAuthPage;
+    // Buyers and dealers talk to each other through Messages, not the central AI chatbot.
+    const { profile } = useAuth();
+    const isBuyerOrDealer = profile?.role === 'buyer' || profile?.role === 'seller';
 
     return (
         <>
@@ -59,7 +62,7 @@ function AppContent() {
                 </div>
                 {showSidebar && <RecommendationSidebar />}
             </div>
-            {!isAdmin && <AIChatBot />}
+            {!isAdmin && !isBuyerOrDealer && <AIChatBot />}
         </>
     );
 }

@@ -11,22 +11,11 @@ export default function AIChat({ title, icon, welcomeText, placeholder, chips, s
     const [isLoading, setIsLoading] = useState(false);
     const [inputVal, setInputVal] = useState('');
 
-    const [isVisible, setIsVisible] = useState(true);
-
     useEffect(() => {
         if (chatWindowRef.current) {
             chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
         }
-    }, [messages, isLoading, isVisible]);
-
-    if (!isVisible) return (
-        <button
-            className="btn-ghost"
-            style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-            onClick={() => setIsVisible(true)}
-        >
-        </button>
-    );
+    }, [messages, isLoading]);
 
     const sendMessage = async (text) => {
         const msg = text || inputVal.trim();
@@ -59,15 +48,6 @@ export default function AIChat({ title, icon, welcomeText, placeholder, chips, s
                 <div className="ai-card-title">{title}</div>
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <div className="ai-status">AI Online</div>
-                    <button
-                        onClick={() => setIsVisible(false)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '0.2rem', display: 'flex' }}
-                        title="Close Chat"
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                    </button>
                 </div>
             </div>
             <div className="ai-chat-window" ref={chatWindowRef}>

@@ -559,13 +559,14 @@ AI modules:
 [ ] Layout is a conceptual massing model, not a construction drawing. There is
     no door-swing or adjacency logic (e.g. kitchen next to dining). Furniture
     in the GLB is indicative only (UPDATE-010).
-[ ] Floor-plan image analysis (UPDATE-010) does not read text: room names and
-    printed dimensions are not OCR'd. The user must give the overall width
-    and/or depth (outside wall to outside wall); room types come only from
-    HAVEN's colour legend, stair hatching, or the user's review.
+[ ] Floor-plan text (UPDATE-016) is read by local OCR (RapidOCR). Plans
+    without printed sizes still need the overall width/depth from the user;
+    labels the OCR misreads or does not know stay "Unknown" for the review.
+    Sizes printed rotated 90 degrees are often not read.
 [ ] One uploaded image = one floor. Two-floor models from images only work
     for PNGs exported by HAVEN's 2D page (plan data embedded in the file).
-[ ] Openings wider than 5 ft are not bridged, so an open-plan lounge/dining
+[ ] Openings wider than 5 ft (8 ft when a room would otherwise open onto the
+    outside) are not bridged, so an open-plan lounge/dining
     joined by a wide arch is read as one room. Curved or diagonal walls are
     not supported (rooms are split into axis-aligned rectangles).
 [ ] Measured accuracy: within ~0.35 ft on clean synthetic plans at 20 px/ft,
@@ -1249,6 +1250,46 @@ Status: Completed and tested. Backend 139 pytest; frontend 62 Vitest
   (DownloadDialog.test.jsx new); lint and build OK.
 Note: GEMINI_* settings remain for the other modules (2D plans, 3D
   reference photos); the interior module does not read them.
+
+## UPDATE-016
+
+Date: 2026-10-07
+Phase: Phase 3 (3D Design)
+Module: 3D Design - uploaded 2D plan is reconstructed, not reinvented
+
+Change:
+Bug: uploading a 2D floor plan produced a different house.
+Root cause: a plan uploaded with "Upload photo" on the "Describe
+  requirements" tab went to the existing-property PHOTO pipeline
+  (reference.py), which never reads a layout: it builds the house from the
+  text brief with the room packer (or an empty shell), so rooms, walls and
+  openings were invented. The "Upload 2D design" path (plan_vision) was
+  structural, but read no text (every room "Unknown", NEEDS_DIMENSIONS
+  unless typed), broke on outlined (double-line) walls and lost rooms
+  behind windows wider than 5 ft.
+  generate-from-image   floor plans are detected (looks_like_floor_plan) and
+                        answered FLOOR_PLAN_DETECTED; the page moves the file
+                        to "Upload 2D design" and analyses it there
+  plan_vision/text.py   RapidOCR (onnxruntime, local, optional): room names
+                        -> room types; "12' x 14'" / 26'-0" -> scale, so the
+                        size no longer has to be typed; typed sizes win and
+                        are cross-checked; unplaced or merged labels warn
+  segmentation.py       outlined walls filled (channel width test; window
+                        glazing and stair treads excluded); glazing lines
+                        found relative to the paper colour (scans)
+  service.py            wider gap limits retried when a room opens outside
+  design3d/fidelity.py  3D vs plan check before sending: same rooms at the
+                        same place/size, shared walls kept, no overlaps,
+                        enclosed rooms closed, openings placed, GLB room
+                        count; blocking failures withhold the model
+  frontend              text read and "Name read from drawing" in the
+                        review; "Matches your 2D plan" checks next to the
+                        viewer; dimensions optional
+Status: Completed and tested. Backend pytest incl. test_plan_reading.py;
+  frontend Vitest; lint and build OK. Checked end to end on generated
+  single-line, double-line, solid, noisy-JPEG and rotated plans (5 and 8
+  rooms): every room, door and window reproduced with its printed name.
+Next Step: OCR install is a separate --no-deps step (README).
 
 3. Currently Working
 

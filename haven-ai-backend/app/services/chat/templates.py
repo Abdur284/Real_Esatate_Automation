@@ -23,10 +23,28 @@ def template_response(module: str, module_data: Optional[Dict]) -> str:
 
         total = module_data.get("total_cost", "N/A")
         breakdown = module_data.get("breakdown", {})
-        breakdown_text = "\n".join([f"- **{k.title()}**: {v}" for k, v in breakdown.items()]) if breakdown else ""
-        return (f"### 🏗️ Construction Cost Estimate\n\n"
-                f"Estimated total construction cost: **{total}**.\n\n"
-                f"{breakdown_text}")
+        # Keys already containing capitals (e.g. "Concrete & RCC") are kept as-is;
+        # plain lowercase keys from the fallback data are title-cased.
+        def _label(k):
+            return k if any(c.isupper() for c in k) else k.title()
+        breakdown_text = "\n".join(f"- **{_label(k)}**: {v}" for k, v in breakdown.items()) if breakdown else ""
+
+        lines = ["### 🏗️ Construction Cost Estimate", "",
+                 f"Estimated total construction cost: **{total}**."]
+        rng = module_data.get("cost_range") or {}
+        if rng.get("display"):
+            lines.append(f"Likely range: **{rng['display']}**.")
+        if module_data.get("cost_per_sqft"):
+            lines.append(f"Rate per sqft: **{module_data['cost_per_sqft']}**.")
+        if breakdown_text:
+            lines += ["", "**Breakdown:**", breakdown_text]
+        recs = module_data.get("recommendations") or []
+        if recs:
+            lines += ["", "**Recommendations:**"] + [f"- {r}" for r in recs]
+        disclaimer = module_data.get("disclaimer")
+        if disclaimer:
+            lines += ["", f"_{disclaimer}_"]
+        return "\n".join(lines)
 
     elif module == "property_rec":
         props = module_data.get("properties", [])

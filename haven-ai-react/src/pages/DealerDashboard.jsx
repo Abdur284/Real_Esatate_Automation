@@ -26,8 +26,6 @@ export default function DealerDashboard() {
         baths: '',
         area: '',
         description: '',
-        mapUrl: '',
-        mapImage: '',
         image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&q=80'
     });
 
@@ -106,7 +104,7 @@ export default function DealerDashboard() {
             setShowUpload(false);
             setFormData({
                 title: '', price: '', location: '', type: 'For Sale',
-                beds: '', baths: '', area: '', description: '', mapUrl: '', mapImage: '',
+                beds: '', baths: '', area: '', description: '',
                 image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&q=80'
             });
             fetchMyProperties();
@@ -189,29 +187,7 @@ export default function DealerDashboard() {
                                     <input className="modal-input" type="number" placeholder="Bathrooms" value={formData.baths} onChange={e => setFormData({ ...formData, baths: e.target.value })} required />
                                     <input className="modal-input" placeholder="Area Size (e.g. 5 Marla / 1 Kanal)" value={formData.area} onChange={e => setFormData({ ...formData, area: e.target.value })} required style={{ gridColumn: 'span 2' }} />
 
-                                    {/* SECTION 2: THE DEDICATED MAP SECTION (AS REQUESTED) */}
-                                    <div style={{ gridColumn: 'span 2', marginTop: '1rem', padding: '2rem', background: 'rgba(59, 130, 246, 0.03)', borderRadius: '16px', border: '2px dashed var(--accent)', position: 'relative' }}>
-                                        <div style={{ position: 'absolute', top: '-12px', left: '20px', background: 'var(--accent)', color: '#fff', padding: '4px 12px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 800 }}>DEDICATED LOCATION SECTION</div>
-                                        <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>📍 Google Maps Location URL</h3>
-                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginBottom: '1.25rem' }}>Paste the shareable link from Google Maps to enable live navigation for buyers.</p>
-                                        
-                                        <input 
-                                            className="modal-input" 
-                                            placeholder="https://goo.gl/maps/..." 
-                                            value={formData.mapUrl} 
-                                            onChange={e => setFormData({ ...formData, mapUrl: e.target.value })} 
-                                            required
-                                            style={{ width: '100%', border: '1px solid var(--accent)', background: 'var(--surface)' }}
-                                        />
-                                        
-                                        {formData.mapUrl && (
-                                            <div style={{ marginTop: '1rem', color: 'var(--green)', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                ✅ Location Link Successfully Added
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* SECTION 3: MEDIA & DESC */}
+                                    {/* SECTION 2: MEDIA & DESC */}
                                     <div style={{ gridColumn: 'span 2', marginTop: '1rem' }}>
                                         <h3 style={{ fontSize: '1rem', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>2. Media & Description</h3>
                                     </div>

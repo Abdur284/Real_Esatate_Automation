@@ -91,7 +91,11 @@ def l_shaped_house() -> Layout:
     return Layout(W, D, rooms, openings)
 
 
-def draw(layout: Layout, ppf: float = 20.0, margin: int = 60, text: bool = True) -> np.ndarray:
+def draw(layout: Layout, ppf: float = 20.0, margin: int = 60, text: bool = True,
+         sizes: bool = False, hollow: bool = False, overall: bool = False) -> np.ndarray:
+    """sizes: print each room's size ("12' x 14'") under its name; hollow:
+    draw walls as outlines (two parallel lines); overall: print the overall
+    width on a dimension line below the plan."""
     W, D = layout.width, layout.depth
     w_px, h_px = int(round(W * ppf)) + 2 * margin, int(round(D * ppf)) + 2 * margin
     img = np.full((h_px, w_px, 3), 255, np.uint8)
@@ -133,6 +137,8 @@ def draw(layout: Layout, ppf: float = 20.0, margin: int = 60, text: bool = True)
             walls[int(Y(op.line + t / 2)):int(Y(op.line - t / 2)) + 1, int(X(op.a)):int(X(op.b))] = 0
         else:
             walls[int(Y(op.b)):int(Y(op.a)), int(X(op.line - t / 2)):int(X(op.line + t / 2)) + 1] = 0
+    if hollow:
+        walls = walls - cv2.erode(walls, np.ones((3, 3), np.uint8))
     img[walls > 0] = (30, 30, 30)
 
     for op in layout.openings:
@@ -162,6 +168,17 @@ def draw(layout: Layout, ppf: float = 20.0, margin: int = 60, text: bool = True)
             seen.add(r.name)
             cx, cy = X((r.x0 + r.x1) / 2), Y((r.y0 + r.y1) / 2)
             cv2.putText(img, r.name, (int(cx) - 30, int(cy)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (20, 20, 20), 1, cv2.LINE_AA)
+            if sizes:
+                size = f"{r.x1 - r.x0:.0f}' x {r.y1 - r.y0:.0f}'"
+                cv2.putText(img, size, (int(cx) - 30, int(cy) + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (20, 20, 20), 1,
+                            cv2.LINE_AA)
+    if overall:
+        y = int(Y(0)) + 30
+        cv2.line(img, (int(X(0)), y), (int(X(W)), y), (0, 0, 0), 1)
+        for x in (0, W):
+            cv2.line(img, (int(X(x)), y - 6), (int(X(x)), y + 6), (0, 0, 0), 1)
+        cv2.putText(img, f"{W:.0f}'-0\"", (int(X(W / 2)) - 25, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1,
+                    cv2.LINE_AA)
     return img
 
 

@@ -122,7 +122,10 @@ export default function Chat() {
                 }
                 if (alive) navigate(`/chat/${id}`, { replace: true });
             } catch (e) {
-                if (alive) setError(e.message || 'Could not open this conversation.');
+                console.error('Opening conversation failed:', e);
+                if (alive) setError(e?.code === 'permission-denied'
+                    ? 'Could not start the conversation: blocked by the database permissions (Firestore rules).'
+                    : e.message || 'Could not open this conversation.');
             }
         })();
         return () => { alive = false; };
@@ -155,10 +158,15 @@ export default function Chat() {
                 senderName: profile?.name || user.displayName || 'User',
                 createdAt: serverTimestamp(),
             });
-            await updateDoc(doc(db, 'chats', chatId), { lastMessage: text.slice(0, 200), lastMessageAt: serverTimestamp() });
             setNewMessage('');
-        } catch {
-            toast.error('Your message could not be sent. Please try again.');
+            // The inbox preview is secondary: the message is already sent.
+            updateDoc(doc(db, 'chats', chatId), { lastMessage: text.slice(0, 200), lastMessageAt: serverTimestamp() })
+                .catch((err) => console.error('Chat preview update failed:', err));
+        } catch (err) {
+            console.error('Message send failed:', err);
+            toast.error(err?.code === 'permission-denied'
+                ? 'Message blocked by the database permissions (Firestore rules).'
+                : `Your message could not be sent (${err?.code || err?.message || 'unknown error'}).`);
         } finally {
             setSending(false);
         }
@@ -180,7 +188,7 @@ export default function Chat() {
     const otherName = user.uid === chatData?.dealerId ? chatData?.buyerName : chatData?.dealerName;
 
     return (
-        <div style={{ height: 'calc(100vh - var(--nav-h))', display: 'flex', flexDirection: 'column', background: 'var(--bg-2)' }}>
+        <div style={{ height: 'calc(100vh - var(--nav-h))', marginTop: 'var(--nav-h)', display: 'flex', flexDirection: 'column', background: 'var(--bg-2)' }}>
             {/* Chat Header */}
             <div style={{ padding: '1rem 2rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '1rem', position: 'relative' }}>
                 <button

@@ -6,12 +6,11 @@ line drawings whose walls are the thickest long straight strokes on the page,
 so morphology finds them reliably and deterministically, in well under a
 second on a CPU, with no model download, GPU or external AI service. It also
 fails visibly (no enclosed rooms found) instead of hallucinating a layout.
-What it cannot do is read text: room names and printed dimensions are not
-OCR'd, so the scale must come from the user and room types come only from
-HAVEN's colour legend, stair hatching, or the user's review.
+Text (room names, printed sizes) is read separately by text.py.
 
 Stages (all in pixels, image already rotated so the road is at the bottom):
-    1. ink mask         Otsu threshold, capped so pale room fills are not ink
+    1. ink mask         Otsu threshold, capped so pale room fills are not ink;
+                        outlined (double-line) walls are filled solid
     2. wall thickness   opening sweep over long strokes gives a stroke-thickness
                         histogram; linework is 1-2 px, each wall class is a peak
     3. wall mask        ink opened just below the thinnest wall class, long
@@ -32,7 +31,9 @@ import numpy as np
 
 MAX_SIDE_PX = 1600          # analysis resolution cap
 INK_THRESHOLD_CAP = 150     # grey levels above this are never ink (room fills)
+LINE_ART_THRESHOLD_CAP = 215  # ... except on white line drawings without fills
 RECT_FIT_SINGLE = 0.88      # fill ratio above which a room is one rectangle
+FIXTURE_MAX_SHARE = 0.35    # an enclosed outline inside a room, at most this big, is furniture
 MAX_PARTS = 6
 
 
@@ -57,9 +58,9 @@ def prepare(img: np.ndarray) -> Tuple[np.ndarray, np.ndarray, float]:
     return img, cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), f
 
 
-def ink_mask(gray: np.ndarray) -> np.ndarray:
+def ink_mask(gray: np.ndarray, cap: int = INK_THRESHOLD_CAP) -> np.ndarray:
     t, _ = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return (gray < min(t, INK_THRESHOLD_CAP)).astype(np.uint8)
+    return (gray < min(t, cap)).astype(np.uint8)
 
 
 def _first_run(values: np.ndarray, skip_leading: bool = True) -> int:
@@ -74,15 +75,76 @@ def _first_run(values: np.ndarray, skip_leading: bool = True) -> int:
     return int(zeros[0]) if zeros.size else int(values.size - start)
 
 
-def detect_walls(gray: np.ndarray) -> Optional[Dict[str, Any]]:
-    """Stages 1-3. Returns None when nothing wall-like is found."""
-    ink = ink_mask(gray)
-    side = max(gray.shape)
-    stroke_len = max(15, int(side * 0.03))
-    base = int(_long_strokes(ink, stroke_len).sum())
-    if base == 0:
-        return None
+def fill_hollow_walls(ink: np.ndarray, stroke_len: int) -> Tuple[np.ndarray, float]:
+    """Many architectural drawings draw walls as two parallel lines with white
+    between them instead of a solid stroke. Those white channels are long,
+    thin background regions (a room is wide; a letter's counter is short), so
+    they are filled in to give solid walls. Returns (ink, filled share of ink)."""
+    side = max(ink.shape)
+    max_half = max(3.0, 0.015 * side)          # half the widest hollow wall
+    bg = (1 - ink).astype(np.uint8)
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(bg, connectivity=4)
+    if n <= 1:
+        return ink, 0.0
+    dist = cv2.distanceTransform(bg, cv2.DIST_L2, 3)
+    widest = np.zeros(n, dtype=np.float32)
+    np.maximum.at(widest, lab.ravel(), dist.ravel())
+    H, W = ink.shape
+    fill = np.zeros(n, dtype=bool)
+    for i in range(1, n):
+        x, y, w, h, area = (int(v) for v in stats[i])
+        if x == 0 or y == 0 or x + w >= W or y + h >= H:
+            continue  # the page around the building
+        if widest[i] <= max_half and max(w, h) >= stroke_len and area >= 2 * stroke_len:
+            fill[i] = True
+    if not fill.any():
+        return ink, 0.0
+    # A window in such a wall is drawn as three or more lines across the
+    # opening: its channels are much narrower than the wall's own channel.
+    # They stay open, so the opening is found (and typed) like any other gap.
+    areas = stats[:, cv2.CC_STAT_AREA]
+    ids = np.flatnonzero(fill)
+    order = ids[np.argsort(widest[ids])]
+    cum = np.cumsum(areas[order])
+    typical = widest[order[np.searchsorted(cum, cum[-1] / 2)]]
+    fill[ids[widest[ids] < 0.6 * typical]] = False
+    # Stair treads also leave long thin channels, but stacked side by side; a
+    # wall's channel has none parallel right next to it.
+    bars = []
+    for i in np.flatnonzero(fill):
+        x, y, w, h, area = (int(v) for v in stats[i])
+        if area >= 0.6 * w * h:
+            bars.append((i, x, y, w, h))
+    for i, x, y, w, h in bars:
+        reach = 2 * widest[i] + 3
+        stacked = 0
+        for j, x2, y2, w2, h2 in bars:
+            if j == i or (w > h) != (w2 > h2):
+                continue
+            if w > h:
+                near = min(abs(y2 - (y + h)), abs(y - (y2 + h2))) <= reach
+                overlap = min(x + w, x2 + w2) - max(x, x2) >= 0.5 * min(w, w2)
+            else:
+                near = min(abs(x2 - (x + w)), abs(x - (x2 + w2))) <= reach
+                overlap = min(y + h, y2 + h2) - max(y, y2) >= 0.5 * min(h, h2)
+            stacked += near and overlap
+        if stacked >= 2:
+            fill[i] = False
+    # Furniture outlines (a sofa with its cushions, a bed with its pillows)
+    # also enclose thin channels, but filling them makes a solid block, not a
+    # wall-thick stroke: such channels are left empty.
+    solid = (ink | fill[lab]).astype(np.uint8)
+    depth = cv2.distanceTransform(solid, cv2.DIST_L2, 3)
+    deepest = np.zeros(n, dtype=np.float32)
+    np.maximum.at(deepest, lab.ravel(), np.where(fill[lab], depth, 0).ravel())
+    fill[np.flatnonzero(fill & (deepest > 2.0 * (typical + 2.0)))] = False
+    added = fill[lab]
+    return (ink | added).astype(np.uint8), float(added.sum()) / max(1, int(ink.sum()))
 
+
+def _thick_stroke_classes(ink: np.ndarray, stroke_len: int, base: int, side: int,
+                          share: float = 0.1, minimum: int = 3) -> List[int]:
+    """Thicknesses (px) of the wall classes among the long strokes."""
     kmax = max(3, int(side * 0.03))
     counts = [base]
     for k in range(2, kmax + 2):
@@ -92,12 +154,82 @@ def detect_walls(gray: np.ndarray) -> Optional[Dict[str, Any]]:
     # a thickness histogram. Text, dimension lines and door arcs sit at 1-2 px;
     # each wall class (partitions, outer walls) is a separate peak above that.
     mass = {t: counts[t - 1] - counts[t] for t in range(1, len(counts))}
-    walls_classes = [t for t, m in mass.items() if t >= 3 and m >= 0.1 * base]
+    return [t for t, m in mass.items() if t >= minimum and m >= share * base]
+
+
+def merge_double_lines(ink: np.ndarray, stroke_len: int) -> Tuple[np.ndarray, int]:
+    """CAD-style plans often draw each wall as two thin parallel lines whose
+    gap is open at doors and corners, so the gap is not a closed channel
+    (fill_hollow_walls cannot see it). The most common spacing between
+    parallel long lines is the wall's width; pairs of long lines at most that
+    far apart are filled in between. Returns (ink, spacing px; 0 = none)."""
+    side = max(ink.shape)
+    horizontal = _open(ink, stroke_len, 1)
+    vertical = _open(ink, 1, stroke_len)
+    gmax = max(4, int(side * 0.03))
+    hist = np.zeros(gmax + 1, dtype=np.int64)
+    for lines in (horizontal, vertical.T):
+        for col in lines.T:
+            on = np.flatnonzero(col)
+            if on.size < 2:
+                continue
+            gaps = np.diff(on) - 1
+            np.add.at(hist, gaps[(gaps >= 3) & (gaps <= gmax)], 1)
+    if not hist.any():
+        return ink, 0
+    g = int(np.argmax(hist))
+    bridged = cv2.morphologyEx(horizontal, cv2.MORPH_CLOSE, _rect(1, g + 2))         | cv2.morphologyEx(vertical, cv2.MORPH_CLOSE, _rect(g + 2, 1))
+    added = (bridged & (1 - ink)).astype(np.uint8)
+    merged = (ink | added).astype(np.uint8)
+    # Evenly spaced parallel lines (stair treads, hatching) would merge into
+    # a solid block; a wall is only about one spacing thick, so fills that
+    # end up deeper than that are undone.
+    t = 2 * g + 4  # thicker than a wall plus a window's glazing lines
+    blocks = cv2.dilate(_open(merged, t, t), _rect(3, 3))
+    merged[(blocks > 0) & (added > 0)] = 0
+    return merged, g
+
+
+def detect_walls(gray: np.ndarray, double_lines: bool = False) -> Optional[Dict[str, Any]]:
+    """Stages 1-3. Returns None when nothing wall-like is found. With
+    double_lines, walls drawn as two thin parallel lines are merged first
+    (the caller retries with it when the plain reading finds no plan)."""
+    # Thin anti-aliased CAD lines are often lighter grey than the usual ink
+    # cut-off; on a white page with no colour fills they still count as ink.
+    white_page = float(np.median(gray)) >= 245 and float(np.mean((gray > 200) & (gray < 240))) < 0.12
+    ink = ink_mask(gray, LINE_ART_THRESHOLD_CAP if double_lines and white_page else INK_THRESHOLD_CAP)
+    side = max(gray.shape)
+    stroke_len = max(15, int(side * 0.03))
+    if double_lines:
+        ink, spacing = merge_double_lines(ink, stroke_len)
+        if not spacing:
+            return None
+    base = int(_long_strokes(ink, stroke_len).sum())
+    if base == 0:
+        return None
+    hollow = False
+    if not double_lines and not _thick_stroke_classes(ink, stroke_len, base, side):
+        # No solid walls at all: either single-line walls (fine as they are)
+        # or outlined walls, whose channels are then a large share of the ink.
+        filled, share = fill_hollow_walls(ink, stroke_len)
+        if share > 0.5:
+            ink, hollow = filled, True
+            base = int(_long_strokes(ink, stroke_len).sum())
+
+    walls_classes = _thick_stroke_classes(ink, stroke_len, base, side)
     thin = min(walls_classes) if walls_classes else 1
+    if double_lines:
+        # Merged walls vary with the drawn spacing (partitions are drawn
+        # narrower), so smaller wall classes count too; the 1-2 px linework
+        # of furniture and text is still removed.
+        thin = min(walls_classes + _thick_stroke_classes(ink, stroke_len, base, side, share=0.03,
+                                                         minimum=max(3, spacing // 2)), default=4)
     # Open just below the thinnest wall class: removes thin linework but keeps
     # every wall, partitions included.
     k = thin
     k_open = max(1, int(round(0.6 * thin))) if thin >= 3 else 1
+    if double_lines:
+        k_open = max(3, k_open)
 
     opened = _open(ink, k_open, k_open) if k_open > 1 else ink
     n, labels, stats, _ = cv2.connectedComponentsWithStats(opened, connectivity=8)
@@ -131,6 +263,23 @@ def detect_walls(gray: np.ndarray) -> Optional[Dict[str, Any]]:
                 bb = [min(bb[0], b[0]), min(bb[1], b[1]), max(bb[2], b[2]), max(bb[3], b[3])]
                 grew = True
     x, y, w, h = bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1]
+    if double_lines:
+        # Merged furniture outlines (beds, sofas, tables) are small islands
+        # inside rooms; wall pieces are long, or join other walls, or sit on
+        # the building's outline.
+        short = 0.15 * max(w, h)
+        edge = 3 * k
+        for i in list(inside):
+            b = box(i)
+            if max(b[2] - b[0], b[3] - b[1]) >= short or i == main:
+                continue
+            on_outline = b[0] - x <= edge or b[1] - y <= edge or x + w - b[2] <= edge or y + h - b[3] <= edge
+            grown = cv2.dilate((labels[max(0, b[1] - 3):b[3] + 3, max(0, b[0] - 3):b[2] + 3] == i)
+                               .astype(np.uint8), _rect(5, 5))
+            nearby = labels[max(0, b[1] - 3):b[3] + 3, max(0, b[0] - 3):b[2] + 3][grown > 0]
+            touches = any(j in inside and j != i for j in np.unique(nearby).tolist())
+            if not on_outline and not touches:
+                inside.discard(i)
     walls = np.isin(labels, list(inside)).astype(np.uint8)
 
     wall_px = int(walls.sum())
@@ -161,6 +310,7 @@ def detect_walls(gray: np.ndarray) -> Optional[Dict[str, Any]]:
         "straightness": straight / wall_px if wall_px else 0.0,
         "wall_pixel_share": wall_px / max(1, int(ink.sum())),
         "image_shape": gray.shape,
+        "hollow_walls": hollow,
     }
 
 
@@ -327,7 +477,7 @@ def segment_rooms(bgr: np.ndarray, gray: np.ndarray, wall: Dict[str, Any], max_g
         a = bbox(i)
         for j in candidates:
             b = bbox(j)
-            if i != j and stats[i, cv2.CC_STAT_AREA] < 0.25 * stats[j, cv2.CC_STAT_AREA] \
+            if i != j and stats[i, cv2.CC_STAT_AREA] < FIXTURE_MAX_SHARE * stats[j, cv2.CC_STAT_AREA] \
                     and a[0] > b[0] and a[1] > b[1] and a[2] < b[2] and a[3] < b[3]:
                 fixtures[i] = j
                 break
@@ -378,7 +528,7 @@ def segment_rooms(bgr: np.ndarray, gray: np.ndarray, wall: Dict[str, Any], max_g
         })
 
     openings = _find_openings(bgr, wall["ink"], walls, closed, labels, border, k, min_side_px)
-    return {"rooms": rooms, "openings": openings, "closed": closed, "labels": labels,
+    return {"rooms": rooms, "openings": openings, "closed": closed, "labels": labels, "fixtures": fixtures,
             "outside_share": outside_share, "rejected_regions": rejected_small}
 
 
@@ -398,9 +548,13 @@ def _find_openings(bgr, ink, walls, closed, labels, border, k, min_len_px) -> Li
         b, g, r = region[..., 0], region[..., 1], region[..., 2]
         blue = float(((b > r + 40) & (b > 120) & (g > r)).mean())
         orange = float(((r > b + 60) & (r > 150) & (g > b)).mean())
-        dark = ink[y:y + h, x:x + w]
-        profile = dark.mean(axis=1 if horizontal else 0)
-        lines = profile > 0.7
+        # Lines running along the gap (window glazing), found by darkness
+        # relative to the gap's own paper colour rather than the global ink
+        # threshold, so faint or blurred lines on scans still count.
+        grey = cv2.cvtColor(bgr[y:y + h, x:x + w], cv2.COLOR_BGR2GRAY).astype(float)
+        profile = grey.mean(axis=1 if horizontal else 0)
+        paper = float(np.percentile(profile, 90)) if profile.size else 255.0
+        lines = (profile < paper - 35) | (ink[y:y + h, x:x + w].mean(axis=1 if horizontal else 0) > 0.7)
         nlines = int(np.count_nonzero(lines[1:] & ~lines[:-1]) + (1 if lines.size and lines[0] else 0))
 
         # Which regions lie on either side of the gap (room labels or outside).
