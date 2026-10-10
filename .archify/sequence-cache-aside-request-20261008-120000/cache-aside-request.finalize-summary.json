@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "sequence",
+  "quality": "showcase",
+  "specification": {
+    "path": "D:\\New\\FYP Website\\.archify\\sequence-cache-aside-request-20261008-120000\\candidate.json",
+    "sha256": "473d391d68bf756721655d23999f281801616b5a3b355f7036b3802e6e99422f",
+    "bytes": 3275
+  },
+  "artifact": {
+    "path": "D:\\New\\FYP Website\\.archify\\sequence-cache-aside-request-20261008-120000\\cache-aside-request.html",
+    "sha256": "266e70ae70e22e6e516f29581b9a8338461ced9bc21d41b954863b780cbf6387",
+    "bytes": 756212
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "fail"
+  },
+  "failedStage": "browser-check",
+  "diagnostics": [
+    {
+      "code": "viewer/evidence-path-conflict",
+      "severity": "error",
+      "message": "browser-check will not replace the existing unowned evidence path \"D:\\New\\FYP Website\\.archify\\sequence-cache-aside-request-20261008-120000\\cache-aside-request.browser-check.json\".",
+      "subject": {
+        "artifact": "D:\\New\\FYP Website\\.archify\\sequence-cache-aside-request-20261008-120000\\cache-aside-request.html",
+        "evidencePath": "D:\\New\\FYP Website\\.archify\\sequence-cache-aside-request-20261008-120000\\cache-aside-request.browser-check.json"
+      },
+      "evidence": {
+        "reason": {
+          "code": "ownership-artifact-mismatch"
+        }
+      },
+      "supportedFixes": [
+        "move the conflicting file aside, or choose a separate --out-dir, then rerun browser-check"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "D:\\New\\FYP Website\\.archify\\sequence-cache-aside-request-20261008-120000\\cache-aside-request.finalize.json",
+    "summaryReceipt": "D:\\New\\FYP Website\\.archify\\sequence-cache-aside-request-20261008-120000\\cache-aside-request.finalize-summary.json",
+    "browserCheckReceipt": "D:\\New\\FYP Website\\.archify\\sequence-cache-aside-request-20261008-120000\\cache-aside-request.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.0.1",
+    "availableVersion": "3.0.1",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-08T08:18:01.245Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 5265
+}

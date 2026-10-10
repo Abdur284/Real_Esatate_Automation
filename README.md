@@ -35,6 +35,13 @@ npm run dev
    `cd haven-ai-backend && python scripts/set_admin.py you@example.com`.
    Sign out and in again; the **Admin** link appears in the navigation bar.
 
+## Deploy
+
+See [`DEPLOYMENT.md`](DEPLOYMENT.md) for a full walkthrough (backend on Render
+via Docker, frontend on Vercel, Firebase rules and admin setup). Config lives in
+[`render.yaml`](render.yaml), [`haven-ai-backend/Dockerfile`](haven-ai-backend/Dockerfile)
+and [`haven-ai-react/vercel.json`](haven-ai-react/vercel.json).
+
 ## Tests
 
 ```bash

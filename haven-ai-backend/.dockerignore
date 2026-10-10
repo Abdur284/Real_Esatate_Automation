@@ -1,0 +1,31 @@
+# Keep the image small and never bake secrets in.
+# NOTE: ml_models/ and assets/ are intentionally NOT ignored — the large ONNX
+# model and interior assets must be in the image (they are gitignored, so they
+# only exist on the build machine).
+
+venv/
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+*.prof
+
+# Runtime data (recreated at runtime; use a mounted disk in production)
+storage/
+
+# Secrets — supply these to the host as env vars / mounted secrets instead
+.env
+.env.*
+!.env.example
+firebase-credentials.json
+*-firebase-adminsdk-*.json
+serviceAccount*.json
+
+# Dev-only
+tests/
+requirements-dev.txt
+*.md
+.vs/
+.idea/
+.DS_Store

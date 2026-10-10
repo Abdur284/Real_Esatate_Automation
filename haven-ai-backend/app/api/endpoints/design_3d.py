@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, Upl
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
+from app.core.config import settings
 from app.core.ratelimit import rate_limit
 from app.services.design3d import model_store
 from app.services.design3d.fidelity import check_glb
@@ -82,6 +83,22 @@ async def generate(req: ModelRequest):
     """
     if not req.prompt or not req.prompt.strip():
         raise HTTPException(status_code=422, detail="`prompt` must not be empty.")
+    # DESIGN3D_TEXT_GENERATOR=gemini has Gemini generate the 2D layout, which is
+    # then built in 3D; the default "builtin" uses the local rule-based planner.
+    if settings.DESIGN3D_TEXT_GENERATOR.lower() == "gemini":
+        from app.services.design3d.gemini_generate import generate_3d_from_prompt
+        try:
+            return _with_glb(await generate_3d_from_prompt(
+                prompt=req.prompt,
+                plot_width_ft=req.plot_width_ft,
+                plot_length_ft=req.plot_length_ft,
+                storeys=req.storeys,
+            ))
+        except GeminiUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc))
+        except Exception:
+            logger.exception("Gemini 3D model generation failed")
+            raise HTTPException(status_code=500, detail="The 3D model could not be generated. Please try again.")
     try:
         return _with_glb(generate_3d_model(
             prompt=req.prompt,
@@ -197,6 +214,28 @@ async def analyze(
     for name, value in (("width_ft", width_ft), ("depth_ft", depth_ft)):
         if value is not None and not 8 <= value <= 400:
             raise HTTPException(status_code=422, detail=f"`{name}` must be between 8 and 400 ft.")
+
+    # PLAN_ANALYZER=gemini reads the drawing with Gemini vision (no OpenCV);
+    # the default "builtin" uses the local computer-vision pipeline.
+    if settings.PLAN_ANALYZER.lower() == "gemini":
+        from app.services.plan_vision.gemini_reader import (
+            MAX_IMAGE_BYTES as PLAN_MAX_IMAGE_BYTES,
+            PlanImageRejected,
+            read_floor_plan,
+        )
+        data = await image.read(PLAN_MAX_IMAGE_BYTES + 1)
+        await image.close()
+        try:
+            return await read_floor_plan(data, width_ft, depth_ft, front)
+        except PlanImageRejected as exc:
+            raise HTTPException(status_code=415, detail=str(exc))
+        except GeminiUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc))
+        except Exception:
+            logger.exception("Gemini floor-plan reading failed")
+            raise HTTPException(status_code=500, detail="The floor-plan analysis failed unexpectedly. "
+                                                        "Please try another image.")
+
     # Imported here so that a missing OpenCV install only disables this
     # endpoint instead of the whole 3D Design API.
     try:
@@ -206,7 +245,8 @@ async def analyze(
     except ImportError:
         logger.exception("Floor-plan analysis unavailable")
         raise HTTPException(status_code=503, detail="Floor-plan image analysis is not available on this "
-                                                    "server (OpenCV is not installed).")
+                                                    "server (OpenCV is not installed). Set "
+                                                    "PLAN_ANALYZER=gemini to read plans with Gemini vision.")
     data = await image.read(PLAN_MAX_IMAGE_BYTES + 1)
     await image.close()
     try:

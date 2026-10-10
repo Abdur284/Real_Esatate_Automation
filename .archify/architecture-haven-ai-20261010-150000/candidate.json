@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Haven.AI — System Architecture",
+    "subtitle": "React SPA · FastAPI · Firebase · mixed cloud + on-device AI",
+    "output": "haven-ai-architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "rules", "type": "security", "label": "Security Rules", "sublabel": "firestore.rules", "pos": [40, 90], "size": [150, 66] },
+    { "id": "firestore", "type": "database", "label": "Cloud Firestore", "sublabel": "profiles · listings · chats", "pos": [300, 86], "size": [168, 74] },
+    { "id": "adminsdk", "type": "security", "label": "Firebase Admin SDK", "sublabel": "privileged server writes", "pos": [590, 86], "size": [172, 74] },
+
+    { "id": "users", "type": "external", "label": "Users", "sublabel": "Browser", "pos": [40, 322], "size": [150, 66] },
+    { "id": "spa", "type": "frontend", "label": "React SPA", "sublabel": "React 19 · Vite · Three.js", "pos": [300, 312], "size": [168, 86] },
+    { "id": "api", "type": "backend", "label": "FastAPI Backend", "sublabel": ":8000 · 8 routers · rate-limited", "pos": [590, 312], "size": [172, 86] },
+    { "id": "auth", "type": "security", "label": "Auth / Token Verify", "sublabel": "Firebase ID tokens", "pos": [864, 318], "size": [168, 74] },
+
+    { "id": "gemini", "type": "cloud", "label": "Gemini", "sublabel": "LLM + Vision (cloud)", "pos": [300, 560], "size": [168, 76] },
+    { "id": "segformer", "type": "backend", "label": "SegFormer-B2", "sublabel": "ONNX · on-device CPU", "pos": [510, 560], "size": [168, 76] },
+    { "id": "xgboost", "type": "backend", "label": "XGBoost + Rules", "sublabel": "cost estimation", "pos": [720, 560], "size": [168, 76] },
+    { "id": "opencv", "type": "backend", "label": "OpenCV + OCR", "sublabel": "floor-plan reading", "pos": [930, 560], "size": [168, 76] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Browser (client)", "wraps": ["users", "spa"] },
+    { "kind": "region", "label": "Firebase (Google Cloud)", "wraps": ["firestore", "adminsdk"] },
+    { "kind": "region", "label": "FastAPI server + on-device models", "wraps": ["api", "auth", "segformer", "xgboost", "opencv"] }
+  ],
+  "connections": [
+    { "id": "users-spa", "from": "users", "to": "spa", "label": "uses", "variant": "emphasis" },
+    { "id": "spa-api", "from": "spa", "to": "api", "label": "REST + Bearer token", "variant": "emphasis" },
+
+    { "id": "spa-firestore", "from": "spa", "to": "firestore", "label": "direct read / write", "variant": "security", "fromSide": "top", "toSide": "bottom" },
+    { "id": "rules-firestore", "from": "rules", "to": "firestore", "label": "enforce access", "variant": "security", "fromSide": "right", "toSide": "left" },
+
+    { "id": "api-auth", "from": "api", "to": "auth", "label": "verify ID token", "variant": "security", "fromSide": "right", "toSide": "left" },
+    { "id": "api-adminsdk", "from": "api", "to": "adminsdk", "label": "chat_sessions · designs", "variant": "dashed", "fromSide": "top", "toSide": "bottom" },
+    { "id": "adminsdk-firestore", "from": "adminsdk", "to": "firestore", "label": "bypasses rules", "variant": "dashed", "fromSide": "left", "toSide": "right" },
+
+    { "id": "api-gemini", "from": "api", "to": "gemini", "label": "chat · 2D · vision", "fromSide": "bottom", "toSide": "top" },
+    { "id": "api-segformer", "from": "api", "to": "segformer", "label": "segment photo", "fromSide": "bottom", "toSide": "top" },
+    { "id": "api-xgboost", "from": "api", "to": "xgboost", "label": "estimate cost", "fromSide": "bottom", "toSide": "top" },
+    { "id": "api-opencv", "from": "api", "to": "opencv", "label": "read plan", "fromSide": "bottom", "toSide": "top" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Frontend", "items": ["React 19 SPA, lazy-loaded routes (Vite)", "Three.js renders generated 3D houses", "Firebase SDK: Auth + direct Firestore"] },
+    { "dot": "emerald", "title": "Backend", "items": ["FastAPI, 8 routers behind rate limits", "Verifies Firebase ID tokens on every call", "Graceful fallback when any AI is down"] },
+    { "dot": "violet", "title": "Mixed AI / ML", "items": ["Gemini — language & vision (cloud)", "SegFormer — private room segmentation", "XGBoost — explainable cost", "OpenCV + OCR — floor-plan geometry"] },
+    { "dot": "rose", "title": "Security & data", "items": ["Two paths: browser→Firestore, browser→API", "firestore.rules guard all direct access", "Admin SDK writes server-only collections"] }
+  ]
+}

@@ -26,12 +26,22 @@ class Settings(BaseSettings):
     # API keys for ML services
     GEMINI_API_KEY: str = ""
     # Model for the chatbot, and the ordered fallback list for the 2D planner
-    # (comma separated; empty = GEMINI_MODEL, gemini-3.8-flash, gemini-flash-latest).
-    GEMINI_MODEL: str = "gemini-3.6-flash"
+    # (comma separated; empty = GEMINI_MODEL then gemini-3.8-flash, gemini-flash-latest).
+    # Pro models have little/no free-tier quota (429); flash is the default.
+    GEMINI_MODEL: str = "gemini-flash-latest"
     GEMINI_MODELS_2D: str = ""
+    # 3D Design from a text prompt (POST /api/design/3d/generate):
+    #   builtin = local rule-based room planner
+    #   gemini  = Gemini generates the 2D layout, then it is built in 3D
+    DESIGN3D_TEXT_GENERATOR: str = "builtin"
     # 3D Design photo analysis: "builtin" uses local code only (no AI service);
     # "gemini" uses Gemini vision plus the settings below.
     DESIGN3D_PHOTO_ANALYZER: str = "builtin"
+    # Floor-plan reading for POST /api/design/3d/analyze: "builtin" uses the
+    # local OpenCV computer-vision pipeline (needs OpenCV installed); "gemini"
+    # reads the drawing with Gemini vision (GEMINI_PLAN_MODELS below, no OpenCV).
+    PLAN_ANALYZER: str = "builtin"
+    GEMINI_PLAN_MODELS: str = ""
     # Gemini analyser only: models that read the uploaded property photo, and
     # image-generation models for the optional photorealistic render (the
     # latter have no free-tier quota; they need billing on the Google project).

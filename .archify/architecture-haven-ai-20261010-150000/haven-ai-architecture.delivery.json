@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "dc052d75-fdac-4f65-9dfb-b421b4872763",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\New\\FYP Website\\.archify\\architecture-haven-ai-20261010-150000\\candidate.json",
+  "output": "D:\\New\\FYP Website\\.archify\\architecture-haven-ai-20261010-150000\\haven-ai-architecture.html",
+  "specification": {
+    "sha256": "9e51090d2d1cd6e0b417bd653f81d3ba1d2f412b575a993212a1e7f016153285",
+    "bytes": 4538
+  },
+  "artifact": {
+    "sha256": "ddf4cd5aba8ffa94712e3c359772124fc979f35baf6bc9013a851b03cb4cadda",
+    "bytes": 769428
+  }
+}

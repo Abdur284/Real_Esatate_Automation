@@ -38,6 +38,12 @@ app.include_router(properties.router, prefix="/api/properties", tags=["Propertie
 async def root():
     return {"message": "Welcome to Haven AI API", "status": "running"}
 
+
+@app.get("/api/health")
+async def health():
+    """Liveness probe for the host's health check (Render healthCheckPath)."""
+    return {"status": "ok"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

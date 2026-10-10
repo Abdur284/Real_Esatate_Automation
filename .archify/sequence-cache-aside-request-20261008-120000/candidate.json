@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Cache-Aside Web Request",
+    "subtitle": "Browser -> API -> Redis, with a PostgreSQL fallback that fills the cache",
+    "output": ".archify/sequence-cache-aside-request-20261008-120000/cache-aside-request.html",
+    "column_fit": "spread",
+    "animation": "trace",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    { "id": "browser", "type": "external", "label": "Browser", "sublabel": "client" },
+    { "id": "api", "type": "backend", "label": "API", "sublabel": "request handler" },
+    { "id": "redis", "type": "database", "label": "Redis", "sublabel": "cache" },
+    { "id": "db", "type": "database", "label": "PostgreSQL", "sublabel": "source of truth" }
+  ],
+  "segments": [
+    { "from": 158, "to": 258, "label": "Request" },
+    { "from": 258, "to": 362, "label": "Cache hit (fast path)" },
+    { "from": 362, "to": 582, "label": "Cache miss fallback" },
+    { "from": 582, "to": 632, "label": "Response" }
+  ],
+  "messages": [
+    { "id": "http-request", "from": "browser", "to": "api", "y": 180, "label": "GET /resource", "variant": "emphasis" },
+    { "id": "cache-read", "from": "api", "to": "redis", "y": 232, "label": "GET key", "variant": "default" },
+    { "id": "cache-hit", "from": "redis", "to": "api", "y": 284, "label": "hit (value)", "variant": "return", "note": "Branch A: key present" },
+    { "id": "hit-response", "from": "api", "to": "browser", "y": 336, "label": "200 JSON (cached)", "variant": "return", "note": "Fast path ends here" },
+    { "id": "cache-miss", "from": "redis", "to": "api", "y": 400, "label": "miss (nil)", "variant": "return", "note": "Branch B: key absent" },
+    { "id": "db-query", "from": "api", "to": "db", "y": 452, "label": "SELECT row", "variant": "emphasis" },
+    { "id": "db-rows", "from": "db", "to": "api", "y": 504, "label": "rows", "variant": "return" },
+    { "id": "cache-fill", "from": "api", "to": "redis", "y": 556, "label": "SET key, TTL", "variant": "dashed" },
+    { "id": "http-response", "from": "api", "to": "browser", "y": 608, "label": "200 JSON", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "api", "from": 180, "to": 608, "type": "backend" },
+    { "participant": "redis", "from": 232, "to": 290, "type": "database" },
+    { "participant": "redis", "from": 394, "to": 562, "type": "database" },
+    { "participant": "db", "from": 452, "to": 510, "type": "database" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Cache hit (fast path)",
+      "items": [
+        "Browser calls the API with GET /resource",
+        "API reads the key from Redis",
+        "On a hit, Redis returns the value and the API responds immediately"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Cache miss (fallback)",
+      "items": [
+        "Redis returns nil, so the API queries PostgreSQL",
+        "PostgreSQL returns the authoritative rows",
+        "Only a miss reaches the database"
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "Fill then respond",
+      "items": [
+        "API writes the value back to Redis with a TTL (dashed)",
+        "The next identical request becomes a hit",
+        "API returns 200 JSON to the browser"
+      ]
+    }
+  ]
+}
